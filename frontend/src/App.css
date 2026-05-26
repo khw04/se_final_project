@@ -1,0 +1,50 @@
+.app-shell {
+  min-height: 100svh;
+  padding: var(--space-5);
+}
+
+.app-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin: 0 auto;
+  max-width: var(--layout-page);
+  padding: var(--space-3) 0;
+}
+
+.brand-mark {
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: var(--font-size-5);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-tight);
+  text-decoration: none;
+}
+
+.app-nav a {
+  border: var(--border-width-1) solid var(--color-line);
+  border-radius: var(--radius-pill);
+  color: var(--color-muted);
+  font-size: var(--font-size-1);
+  font-weight: var(--font-weight-semibold);
+  padding: var(--space-2) var(--space-4);
+  text-decoration: none;
+}
+
+.app-nav a:focus-visible,
+.brand-mark:focus-visible {
+  outline: var(--border-width-2) solid var(--color-accent);
+  outline-offset: var(--space-1);
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    padding: var(--space-4);
+  }
+
+  .app-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+}
