@@ -1,0 +1,55 @@
+@import './styles/tokens.css';
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--color-page);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--font-size-root);
+  line-height: var(--line-height-body);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: var(--layout-min-width);
+}
+
+body::before {
+  background:
+    radial-gradient(circle at top left, var(--color-glow-primary), transparent var(--space-12)),
+    radial-gradient(circle at bottom right, var(--color-glow-secondary), transparent var(--space-13));
+  content: '';
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+}
+
+a {
+  transition:
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    transform var(--duration-fast) ease;
+}
+
+a:hover {
+  color: var(--color-ink);
+  transform: translateY(calc(var(--space-half) * -1));
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+::selection {
+  background: var(--color-accent-soft);
+  color: var(--color-ink);
+}

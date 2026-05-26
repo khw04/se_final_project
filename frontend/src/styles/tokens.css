@@ -1,0 +1,68 @@
+:root {
+  --color-page: #f4efe5;
+  --color-surface: #fffaf0;
+  --color-surface-translucent: rgba(255, 250, 240, 0.76);
+  --color-surface-strong: #f9ead3;
+  --color-ink: #1d2116;
+  --color-text: #555b48;
+  --color-muted: #7b806f;
+  --color-line: #ddd1bc;
+  --color-accent: #386b4f;
+  --color-accent-strong: #254936;
+  --color-accent-soft: #d9ead9;
+  --color-warning: #9a5f1a;
+  --color-warning-soft: #f3dfbb;
+  --color-glow-primary: rgba(56, 107, 79, 0.2);
+  --color-glow-secondary: rgba(154, 95, 26, 0.16);
+
+  --font-display: Georgia, 'Times New Roman', serif;
+  --font-body: 'Segoe UI', Verdana, sans-serif;
+  --font-mono: Consolas, 'Liberation Mono', monospace;
+  --font-size-root: 16px;
+  --font-size-1: 0.875rem;
+  --font-size-2: 1rem;
+  --font-size-3: 1.125rem;
+  --font-size-4: 1.25rem;
+  --font-size-5: 1.5rem;
+  --font-size-6: clamp(2.75rem, 8vw, 5.75rem);
+  --font-weight-regular: 400;
+  --font-weight-semibold: 650;
+  --font-weight-bold: 760;
+  --line-height-body: 1.6;
+  --line-height-tight: 1;
+  --letter-spacing-tight: -0.04em;
+  --letter-spacing-wide: 0.08em;
+
+  --space-half: 0.125rem;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 2.5rem;
+  --space-8: 3rem;
+  --space-9: 4rem;
+  --space-10: 5rem;
+  --space-11: 6rem;
+  --space-12: 18rem;
+  --space-13: 24rem;
+
+  --layout-min-width: 320px;
+  --layout-page: 1120px;
+  --layout-copy: 680px;
+  --layout-api-card-min: 18rem;
+  --layout-api-card-max: 24rem;
+  --layout-hero-min-height: 32rem;
+
+  --radius-2: 0.75rem;
+  --radius-3: 1rem;
+  --radius-4: 1.5rem;
+  --radius-pill: 999px;
+  --border-width-1: 1px;
+  --border-width-2: 2px;
+  --blur-card: 0.75rem;
+  --gradient-hero: linear-gradient(135deg, var(--color-surface), var(--color-surface-strong));
+  --shadow-card: 0 1.5rem 4rem rgba(29, 33, 22, 0.12);
+  --duration-fast: 160ms;
+}
