@@ -1,4 +1,5 @@
 import { ApiHealthCard } from '../components/ApiHealthCard'
+import { AuthCard } from '../components/AuthCard'
 import './HomePage.css'
 
 export function HomePage() {
@@ -13,7 +14,10 @@ export function HomePage() {
           workflows as the backend services come online.
         </p>
       </div>
-      <ApiHealthCard />
+      <div className="home-page__sidebar">
+        <AuthCard />
+        <ApiHealthCard />
+      </div>
     </section>
   )
 }
