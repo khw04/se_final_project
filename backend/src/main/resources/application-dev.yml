@@ -4,6 +4,13 @@ spring:
     username: ${DB_USERNAME:pokemo}
     password: ${DB_PASSWORD:pokemo}
     driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
 
 logging:
   level:
