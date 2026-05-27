@@ -1,22 +1,22 @@
 :root {
-  --color-page: #f4efe5;
-  --color-surface: #fffaf0;
-  --color-surface-translucent: rgba(255, 250, 240, 0.76);
-  --color-surface-strong: #f9ead3;
-  --color-ink: #1d2116;
-  --color-text: #555b48;
-  --color-muted: #7b806f;
-  --color-line: #ddd1bc;
-  --color-accent: #386b4f;
-  --color-accent-strong: #254936;
-  --color-accent-soft: #d9ead9;
-  --color-warning: #9a5f1a;
-  --color-warning-soft: #f3dfbb;
-  --color-glow-primary: rgba(56, 107, 79, 0.2);
-  --color-glow-secondary: rgba(154, 95, 26, 0.16);
+  --color-page: #fff6d7;
+  --color-surface: #fffdf3;
+  --color-surface-translucent: rgba(255, 253, 243, 0.84);
+  --color-surface-strong: #ffe88a;
+  --color-ink: #17264a;
+  --color-text: #52617a;
+  --color-muted: #74819a;
+  --color-line: #f2d56d;
+  --color-accent: #2f7de1;
+  --color-accent-strong: #174f9f;
+  --color-accent-soft: #dcecff;
+  --color-warning: #d94b42;
+  --color-warning-soft: #ffe0d5;
+  --color-glow-primary: rgba(255, 206, 46, 0.38);
+  --color-glow-secondary: rgba(47, 125, 225, 0.22);
 
-  --font-display: Georgia, 'Times New Roman', serif;
-  --font-body: 'Segoe UI', Verdana, sans-serif;
+  --font-display: Pretendard, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  --font-body: Pretendard, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
   --font-mono: Consolas, 'Liberation Mono', monospace;
   --font-size-root: 16px;
   --font-size-1: 0.875rem;
@@ -62,7 +62,10 @@
   --border-width-1: 1px;
   --border-width-2: 2px;
   --blur-card: 0.75rem;
-  --gradient-hero: linear-gradient(135deg, var(--color-surface), var(--color-surface-strong));
-  --shadow-card: 0 1.5rem 4rem rgba(29, 33, 22, 0.12);
+  --gradient-hero:
+    radial-gradient(circle at 16% 18%, var(--color-surface-strong), transparent 34%),
+    radial-gradient(circle at 88% 14%, var(--color-accent-soft), transparent 30%),
+    linear-gradient(135deg, var(--color-surface), #fff4bd);
+  --shadow-card: 0 1.5rem 4rem rgba(23, 38, 74, 0.14);
   --duration-fast: 160ms;
 }
