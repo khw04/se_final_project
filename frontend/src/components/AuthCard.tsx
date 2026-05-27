@@ -47,7 +47,7 @@ export function AuthCard() {
         }
 
         setCurrentUser(user)
-        setMessage({ tone: 'success', text: `Signed in as ${user.email}.` })
+        setMessage({ tone: 'success', text: `${user.email} 계정으로 로그인되었습니다.` })
       })
       .catch((error: unknown) => {
         if (!isMounted) {
@@ -57,7 +57,7 @@ export function AuthCard() {
         clearAuthSession()
         setSession(null)
         setCurrentUser(null)
-        setMessage({ tone: 'error', text: `Session check failed: ${formatAuthError(error)}` })
+        setMessage({ tone: 'error', text: `세션 확인에 실패했습니다: ${formatAuthError(error)}` })
       })
       .finally(() => {
         if (isMounted) {
@@ -81,7 +81,7 @@ export function AuthCard() {
     setSession(null)
     setCurrentUser(null)
     setPassword('')
-    setMessage({ tone: 'muted', text: 'You have been logged out on this device.' })
+    setMessage({ tone: 'muted', text: '이 기기에서 로그아웃되었습니다.' })
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -94,7 +94,7 @@ export function AuthCard() {
         const user = await registerUser({ email, password })
         setMode('login')
         setPassword('')
-        setMessage({ tone: 'success', text: `Account created for ${user.email}. You can log in now.` })
+        setMessage({ tone: 'success', text: `${user.email} 계정이 생성되었습니다. 이제 로그인할 수 있습니다.` })
         return
       }
 
@@ -103,7 +103,7 @@ export function AuthCard() {
       setSession(nextSession)
       setCurrentUser({ email: nextSession.email, role: nextSession.role })
       setPassword('')
-      setMessage({ tone: 'success', text: 'Login successful. Checking your profile now.' })
+      setMessage({ tone: 'success', text: '로그인되었습니다. 프로필을 확인하는 중입니다.' })
     } catch (error) {
       setMessage({ tone: 'error', text: formatAuthError(error) })
     } finally {
@@ -112,37 +112,37 @@ export function AuthCard() {
   }
 
   const isLoggedIn = Boolean(session)
-  const submitLabel = isSubmitting ? 'Working...' : mode === 'login' ? 'Log in' : 'Create account'
+  const submitLabel = isSubmitting ? '처리 중...' : mode === 'login' ? '로그인' : '계정 만들기'
 
   return (
     <aside className="auth-card" aria-labelledby="auth-card-title">
-      <div className="auth-card__eyebrow">Account access</div>
+      <div className="auth-card__eyebrow">계정 접속</div>
       <div className="auth-card__heading-row">
-        <h2 id="auth-card-title">{mode === 'login' ? 'Log in to Pokemo' : 'Create your Pokemo account'}</h2>
+        <h2 id="auth-card-title">{mode === 'login' ? 'Pokemo 로그인' : 'Pokemo 계정 만들기'}</h2>
         {isLoggedIn ? (
           <button className="auth-card__ghost-button" type="button" onClick={handleLogout}>
-            Log out
+            로그아웃
           </button>
         ) : null}
       </div>
 
       {session ? (
         <div className="auth-card__session" aria-live="polite">
-          <p className="auth-card__session-label">Current user</p>
+          <p className="auth-card__session-label">현재 사용자</p>
           <p className="auth-card__session-email">{currentUser?.email ?? session.email}</p>
           <p className="auth-card__session-role">{currentUser?.role ?? session.role}</p>
-          {isCheckingUser ? <p className="auth-card__hint">Refreshing profile from /api/auth/me...</p> : null}
+          {isCheckingUser ? <p className="auth-card__hint">/api/auth/me에서 프로필을 새로 불러오는 중...</p> : null}
         </div>
       ) : (
         <>
-          <div className="auth-card__mode-toggle" role="tablist" aria-label="Authentication mode">
+          <div className="auth-card__mode-toggle" role="tablist" aria-label="인증 모드">
             <button
               aria-selected={mode === 'login'}
               role="tab"
               type="button"
               onClick={() => switchMode('login')}
             >
-              Login
+              로그인
             </button>
             <button
               aria-selected={mode === 'register'}
@@ -150,13 +150,13 @@ export function AuthCard() {
               type="button"
               onClick={() => switchMode('register')}
             >
-              Register
+              회원가입
             </button>
           </div>
 
           <form className="auth-card__form" onSubmit={handleSubmit}>
             <label>
-              <span>Email</span>
+              <span>이메일</span>
               <input
                 autoComplete="email"
                 name="email"
@@ -168,13 +168,13 @@ export function AuthCard() {
               />
             </label>
             <label>
-              <span>Password</span>
+              <span>비밀번호</span>
               <input
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 minLength={6}
                 name="password"
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="Enter your password"
+                placeholder="비밀번호를 입력하세요"
                 required
                 type="password"
                 value={password}

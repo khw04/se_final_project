@@ -1,6 +1,6 @@
 export const appRoutes = {
   home: {
     path: '/',
-    label: 'Home',
+    label: '홈',
   },
 } as const
