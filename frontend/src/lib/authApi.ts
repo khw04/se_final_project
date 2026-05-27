@@ -2,6 +2,20 @@ const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
 
 const authStorageKey = 'pokemo.auth'
 
+const mockAuthMode = import.meta.env.VITE_POKEMO_MOCK_SESSION === 'true'
+
+function buildMockSession(email: string): AuthSession {
+  const normalizedEmail = email.trim() || 'student@pokemo.dev'
+  const role = normalizedEmail.startsWith('admin') ? 'ADMIN' : 'USER'
+  return {
+    accessToken: 'mock.access.' + normalizedEmail,
+    refreshToken: 'mock.refresh.' + normalizedEmail,
+    tokenType: 'Bearer',
+    email: normalizedEmail,
+    role,
+  }
+}
+
 export type AuthCredentials = {
   email: string
   password: string
@@ -74,6 +88,10 @@ async function requestJson<TResponse>(path: string, init: RequestInit) {
 }
 
 export function registerUser(credentials: AuthCredentials) {
+  if (mockAuthMode) {
+    const mock = buildMockSession(credentials.email)
+    return Promise.resolve<UserResponse>({ email: mock.email, role: mock.role })
+  }
   return requestJson<UserResponse>('/api/auth/register', {
     body: JSON.stringify(credentials),
     headers: {
@@ -84,6 +102,9 @@ export function registerUser(credentials: AuthCredentials) {
 }
 
 export function loginUser(credentials: AuthCredentials) {
+  if (mockAuthMode) {
+    return Promise.resolve<AuthSession>(buildMockSession(credentials.email))
+  }
   return requestJson<AuthSession>('/api/auth/login', {
     body: JSON.stringify(credentials),
     headers: {
@@ -94,6 +115,13 @@ export function loginUser(credentials: AuthCredentials) {
 }
 
 export function getCurrentUser(accessToken: string, tokenType = 'Bearer') {
+  if (mockAuthMode) {
+    const session = loadAuthSession()
+    return Promise.resolve<UserResponse>({
+      email: session?.email ?? 'student@pokemo.dev',
+      role: session?.role ?? 'USER',
+    })
+  }
   return requestJson<UserResponse>('/api/auth/me', {
     headers: {
       Authorization: `${tokenType} ${accessToken}`,

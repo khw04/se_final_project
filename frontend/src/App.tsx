@@ -1,8 +1,16 @@
+import { AppShell } from './app/AppShell'
+import { useAuthSession } from './app/useAuthSession'
 import { HomePage } from './pages/HomePage'
 import { appRoutes } from './routes'
 import './App.css'
 
 function App() {
+  const session = useAuthSession()
+
+  if (session) {
+    return <AppShell session={session} />
+  }
+
   return (
     <div className="app-shell">
       <header className="app-header">

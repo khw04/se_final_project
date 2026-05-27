@@ -20,10 +20,12 @@ type AuthMessage = {
   text: string
 }
 
+const MOCK_PREFILL = import.meta.env.VITE_POKEMO_MOCK_SESSION === 'true'
+
 export function AuthCard() {
   const [mode, setMode] = useState<AuthMode>('login')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [email, setEmail] = useState(MOCK_PREFILL ? 'student@pokemo.dev' : '')
+  const [password, setPassword] = useState(MOCK_PREFILL ? 'mock-demo-password' : '')
   const [session, setSession] = useState<AuthSession | null>(() => loadAuthSession())
   const [currentUser, setCurrentUser] = useState<UserResponse | null>(null)
   const [message, setMessage] = useState<AuthMessage | null>(null)
