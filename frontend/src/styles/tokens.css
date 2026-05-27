@@ -1,19 +1,19 @@
 :root {
-  --color-page: #fff6d7;
-  --color-surface: #fffdf3;
-  --color-surface-translucent: rgba(255, 253, 243, 0.84);
-  --color-surface-strong: #ffe88a;
+  --color-page: #fbfcfe;
+  --color-surface: #ffffff;
+  --color-surface-translucent: rgba(255, 255, 255, 0.88);
+  --color-surface-strong: #e8eef8;
   --color-ink: #17264a;
   --color-text: #52617a;
   --color-muted: #74819a;
-  --color-line: #f2d56d;
-  --color-accent: #2f7de1;
-  --color-accent-strong: #174f9f;
-  --color-accent-soft: #dcecff;
-  --color-warning: #d94b42;
-  --color-warning-soft: #ffe0d5;
-  --color-glow-primary: rgba(255, 206, 46, 0.38);
-  --color-glow-secondary: rgba(47, 125, 225, 0.22);
+  --color-line: #d8e0ec;
+  --color-accent: #243f6b;
+  --color-accent-strong: #17264a;
+  --color-accent-soft: #d7e3f5;
+  --color-warning: #c85a4f;
+  --color-warning-soft: #f8e3dd;
+  --color-glow-primary: rgba(36, 63, 107, 0.12);
+  --color-glow-secondary: rgba(47, 125, 225, 0.08);
 
   --font-display: Pretendard, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
   --font-body: Pretendard, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
@@ -65,7 +65,7 @@
   --gradient-hero:
     radial-gradient(circle at 16% 18%, var(--color-surface-strong), transparent 34%),
     radial-gradient(circle at 88% 14%, var(--color-accent-soft), transparent 30%),
-    linear-gradient(135deg, var(--color-surface), #fff4bd);
+    linear-gradient(135deg, var(--color-surface), #f1f5fb);
   --shadow-card: 0 1.5rem 4rem rgba(23, 38, 74, 0.14);
   --duration-fast: 160ms;
 }
