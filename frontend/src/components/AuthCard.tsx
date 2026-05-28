@@ -33,15 +33,28 @@ export function AuthCard() {
   const [isCheckingUser, setIsCheckingUser] = useState(Boolean(session))
 
   useEffect(() => {
-    if (!session?.accessToken) {
-      setCurrentUser(null)
-      setIsCheckingUser(false)
-      return
-    }
-
     let isMounted = true
 
-    setIsCheckingUser(true)
+    if (!session?.accessToken) {
+      Promise.resolve().then(() => {
+        if (!isMounted) {
+          return
+        }
+
+        setCurrentUser(null)
+        setIsCheckingUser(false)
+      })
+
+      return () => {
+        isMounted = false
+      }
+    }
+
+    Promise.resolve().then(() => {
+      if (isMounted) {
+        setIsCheckingUser(true)
+      }
+    })
     getCurrentUser(session.accessToken, session.tokenType || 'Bearer')
       .then((user) => {
         if (!isMounted) {

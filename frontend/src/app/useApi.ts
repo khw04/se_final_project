@@ -15,7 +15,9 @@ export function useApi<T>(fnFactory: () => Promise<T>, deps: ReadonlyArray<unkno
 
   useEffect(() => {
     let alive = true
-    setLoading(true)
+    Promise.resolve().then(() => {
+      if (alive) setLoading(true)
+    })
     fnFactory()
       .then((next) => {
         if (!alive) return

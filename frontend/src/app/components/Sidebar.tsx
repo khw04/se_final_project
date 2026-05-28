@@ -15,7 +15,7 @@ type NavSection = {
   items: NavItem[]
 }
 
-export const NAV_SECTIONS: NavSection[] = [
+const NAV_SECTIONS: NavSection[] = [
   {
     label: '학습',
     items: [

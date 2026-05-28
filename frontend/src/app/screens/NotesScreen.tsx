@@ -174,11 +174,20 @@ function NoteEditor({ noteId, subjects, tags }: NoteEditorProps) {
 
   useEffect(() => {
     if (!note) return
-    setBody(note.content)
-    setTitle(note.title)
+    let alive = true
     dirtyRef.current = false
-    pokemoApi.getAttachments(note.attachmentIds).then(setAttachments)
-  }, [note?.id])
+    Promise.resolve().then(() => {
+      if (!alive) return
+      setBody(note.content)
+      setTitle(note.title)
+    })
+    pokemoApi.getAttachments(note.attachmentIds).then((nextAttachments) => {
+      if (alive) setAttachments(nextAttachments)
+    })
+    return () => {
+      alive = false
+    }
+  }, [note])
 
   useEffect(() => {
     if (!note || !dirtyRef.current) return
