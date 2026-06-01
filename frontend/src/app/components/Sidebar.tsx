@@ -1,45 +1,13 @@
 import type { AuthSession } from '../../lib/authApi'
-import type { ViewId } from '../types'
+
+import { navSections } from '../nav/registry'
 
 import { Icon } from './Icon'
 
-type NavItem = {
-  id: ViewId
-  label: string
-  icon: string
-  badge?: number
-}
-
-type NavSection = {
-  label: string
-  items: NavItem[]
-}
-
-const NAV_SECTIONS: NavSection[] = [
-  {
-    label: '학습',
-    items: [
-      { id: 'dashboard', label: '대시보드', icon: 'dashboard' },
-      { id: 'calendar', label: '캘린더', icon: 'calendar' },
-      { id: 'notes', label: '노트', icon: 'book' },
-      { id: 'quiz', label: '퀴즈', icon: 'brain' },
-      { id: 'wrong', label: '오답노트', icon: 'x', badge: 2 },
-    ],
-  },
-  {
-    label: '인사이트',
-    items: [{ id: 'recommend', label: 'AI 추천', icon: 'sparkle' }],
-  },
-  {
-    label: '운영',
-    items: [{ id: 'notices', label: '공지사항', icon: 'bell' }],
-  },
-]
-
 type SidebarProps = {
   session: AuthSession
-  activeView: ViewId
-  onSelect: (view: ViewId) => void
+  activeView: string
+  onSelect: (view: string) => void
   onLogout: () => void
 }
 
@@ -51,11 +19,11 @@ export function Sidebar({ session, activeView, onSelect, onLogout }: SidebarProp
         <p className="sidebar__user-email">{session.email}</p>
       </div>
 
-      {NAV_SECTIONS.map((section) => (
+      {navSections.map((section) => (
         <div key={section.label}>
           <p className="sidebar__section-label">{section.label}</p>
           <nav className="sidebar__nav" aria-label={section.label}>
-            {section.items.map((item) => (
+            {section.entries.map((item) => (
               <button
                 key={item.id}
                 type="button"

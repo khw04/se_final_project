@@ -1,7 +1,8 @@
-import type { AuthSession } from '../../lib/authApi'
+import type { AuthSession } from '../../../lib/authApi'
 
-import { Icon } from '../components/Icon'
-import { pokemoApi } from '../pokemoApi'
+import { dashboardApi } from '../../api/dashboardApi'
+import { subjectById } from '../../api/subjectApi'
+import { Icon } from '../../components/Icon'
 import type {
   AccuracyTrendPoint,
   CalendarEvent,
@@ -9,8 +10,8 @@ import type {
   SubjectProgress,
   ViewId,
   WeeklyStudyPoint,
-} from '../types'
-import { useApi } from '../useApi'
+} from '../../types'
+import { useApi } from '../../useApi'
 
 type Props = {
   session: AuthSession
@@ -19,7 +20,7 @@ type Props = {
 
 export function DashboardScreen({ session, onJumpTo }: Props) {
   const greeting = session.email.split('@')[0]
-  const { data, loading } = useApi(() => pokemoApi.getDashboard(), [])
+  const { data, loading } = useApi(() => dashboardApi.getDashboard(), [])
 
   if (loading || !data) {
     return (
@@ -101,15 +102,10 @@ function DDayStrip({ events, onJumpTo }: { events: CalendarEvent[]; onJumpTo: (v
   return (
     <section className="dday-strip" aria-label="D-Day 일정">
       {events.map((ev) => {
-        const subject = pokemoApi.subjectById(ev.subjectId)
+        const subject = subjectById(ev.subjectId)
         const urgent = ev.dDay <= 3
         return (
-          <button
-            key={ev.id}
-            type="button"
-            className="dday-card"
-            onClick={() => onJumpTo('calendar')}
-          >
+          <button key={ev.id} type="button" className="dday-card" onClick={() => onJumpTo('calendar')}>
             <span className={`dday ${urgent ? 'dday--urgent' : ''}`}>D-{ev.dDay}</span>
             <div>
               <p className="dday-card__subject">{subject?.name}</p>
@@ -159,16 +155,13 @@ function SubjectProgressCard({ rows, onAll }: { rows: SubjectProgress[]; onAll: 
       </div>
       <div className="progress-list">
         {rows.map((row) => {
-          const subject = pokemoApi.subjectById(row.subjectId)
+          const subject = subjectById(row.subjectId)
           const tone = row.accuracy >= 70 ? 'accent' : 'warning'
           return (
             <div key={row.subjectId} className="progress-row">
               <span className="progress-row__name">{subject?.name}</span>
               <div className="progress-row__track">
-                <div
-                  className={`progress-row__fill progress-row__fill--${tone}`}
-                  style={{ width: `${row.accuracy}%` }}
-                />
+                <div className={`progress-row__fill progress-row__fill--${tone}`} style={{ width: `${row.accuracy}%` }} />
               </div>
               <span className="progress-row__pct">{row.accuracy}%</span>
             </div>
@@ -193,7 +186,7 @@ function AiRecommendCard({ items, onAll }: { items: PriorityRecommendation[]; on
       </div>
       <ul className="recommend-list">
         {items.map((item) => {
-          const subject = pokemoApi.subjectById(item.subjectId)
+          const subject = subjectById(item.subjectId)
           const kind = item.tone === 'urgent' ? '시험 임박' : item.tone === 'warning' ? '취약 과목' : '학습 추천'
           return (
             <li key={item.rank}>
@@ -241,7 +234,7 @@ function QuizTrendCard({ points }: { points: AccuracyTrendPoint[] }) {
         <path d={linePath} fill="none" stroke="var(--color-accent)" strokeWidth={2.4} strokeLinejoin="round" />
         {values.map((v, i) => (
           <circle
-            key={i}
+            key={points[i]?.attemptedAt ?? v}
             cx={pad + i * stepX}
             cy={yFor(v)}
             r={i === values.length - 1 ? 4 : 2.5}
