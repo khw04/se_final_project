@@ -2,8 +2,8 @@ import { useState } from 'react'
 
 import type { AuthSession } from '../../lib/authApi'
 
+import { noticeApi } from '../api/noticeApi'
 import { Icon } from '../components/Icon'
-import { pokemoApi } from '../pokemoApi'
 import type { Notice } from '../types'
 import { useApi } from '../useApi'
 
@@ -20,11 +20,11 @@ export function NoticesScreen({ session }: { session: AuthSession }) {
   const isAdmin = session.role === 'ADMIN'
   const [composing, setComposing] = useState(false)
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
-  const { data: notices, loading, refetch } = useApi(() => pokemoApi.getNotices(), [])
+  const { data: notices, loading, refetch } = useApi(() => noticeApi.getNotices(), [])
 
   function publish() {
     if (!draft.title.trim()) return
-    pokemoApi.createNotice(draft).then(() => {
+    noticeApi.createNotice(draft).then(() => {
       setDraft(EMPTY_DRAFT)
       setComposing(false)
       refetch()

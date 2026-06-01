@@ -1,14 +1,16 @@
 import { useState } from 'react'
 
+import { relativeKo } from '../api/calendarApi'
+import { quizApi } from '../api/quizApi'
+import { subjectById } from '../api/subjectApi'
 import { Icon } from '../components/Icon'
-import { pokemoApi } from '../pokemoApi'
 import { useApi } from '../useApi'
 
 type Filter = 'all' | 'mcq' | 'short' | 'ox'
 
 export function WrongAnswersScreen() {
   const [filter, setFilter] = useState<Filter>('all')
-  const { data: items, loading } = useApi(() => pokemoApi.getWrongAnswers({ type: filter }), [filter])
+  const { data: items, loading } = useApi(() => quizApi.getWrongAnswers({ type: filter }), [filter])
 
   if (loading || !items) {
     return (
@@ -62,7 +64,7 @@ export function WrongAnswersScreen() {
           type="button"
           className="surface wa-cta"
           onClick={() => {
-            void pokemoApi.retryWeakTypes()
+            void quizApi.retryWeakTypes()
           }}
         >
           <Icon name="refresh" size={18} />
@@ -105,7 +107,7 @@ export function WrongAnswersScreen() {
         ) : (
           <ul className="wa-list">
             {items.map((w) => {
-              const subject = pokemoApi.subjectById(w.question.subjectId)
+              const subject = subjectById(w.question.subjectId)
               const typeLabel = w.question.type === 'mcq' ? '객관식' : w.question.type === 'short' ? '단답형' : 'OX'
               return (
                 <li key={w.questionId} className={w.missCount >= 2 ? 'is-repeat' : ''}>
@@ -116,7 +118,7 @@ export function WrongAnswersScreen() {
                   </div>
                   <p className="wa-list__q">{w.question.text}</p>
                   <p className="wa-list__sub">
-                    관련 개념: <strong>{w.concept}</strong> · 최근 시도: {pokemoApi.relativeKo(w.lastMissedAt)}
+                    관련 개념: <strong>{w.concept}</strong> · 최근 시도: {relativeKo(w.lastMissedAt)}
                   </p>
                   <div className="wa-list__actions">
                     <button type="button" className="surface__title-action">
