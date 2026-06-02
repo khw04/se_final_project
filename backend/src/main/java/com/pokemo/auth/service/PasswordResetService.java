@@ -58,7 +58,7 @@ public class PasswordResetService {
   public void resetPassword(String token, String newPassword) {
     PasswordResetToken resetToken = loadUsableToken(token);
     UserAccount user = userAccountRepository.findByEmail(resetToken.email())
-        .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Account no longer exists"));
+        .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "더 이상 존재하지 않는 계정입니다"));
 
     user.changePassword(passwordEncoder.encode(newPassword));
     resetToken.consume();
@@ -66,10 +66,10 @@ public class PasswordResetService {
 
   private PasswordResetToken loadUsableToken(String token) {
     PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
-        .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Invalid reset token"));
+        .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "유효하지 않은 재설정 토큰입니다"));
 
     if (!resetToken.usableAt(OffsetDateTime.now())) {
-      throw new ApiException(HttpStatus.BAD_REQUEST, "Expired or already used reset token");
+      throw new ApiException(HttpStatus.BAD_REQUEST, "만료되었거나 이미 사용된 재설정 토큰입니다");
     }
 
     return resetToken;

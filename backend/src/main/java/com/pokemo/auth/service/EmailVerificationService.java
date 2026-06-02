@@ -46,10 +46,10 @@ public class EmailVerificationService {
     String normalized = normalizeEmail(email);
     EmailVerification verification = emailVerificationRepository
         .findFirstByEmailAndConsumedFalseOrderByIdDesc(normalized)
-        .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Verification request not found"));
+        .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "인증 요청을 찾을 수 없습니다"));
 
     if (!verification.matches(code, OffsetDateTime.now())) {
-      throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid or expired verification code");
+      throw new ApiException(HttpStatus.BAD_REQUEST, "인증 코드가 올바르지 않거나 만료되었습니다");
     }
 
     verification.consume();
