@@ -130,6 +130,45 @@ export function getCurrentUser(accessToken: string, tokenType = 'Bearer') {
   })
 }
 
+export function requestPasswordReset(email: string) {
+  if (mockAuthMode) {
+    return Promise.resolve<null>(null)
+  }
+  return requestJson<null>('/api/auth/password/reset-request', {
+    body: JSON.stringify({ email }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  })
+}
+
+export function validateResetToken(token: string) {
+  if (mockAuthMode) {
+    return Promise.resolve<null>(null)
+  }
+  return requestJson<null>('/api/auth/password/reset-validate', {
+    body: JSON.stringify({ token }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  })
+}
+
+export function confirmPasswordReset(token: string, newPassword: string) {
+  if (mockAuthMode) {
+    return Promise.resolve<null>(null)
+  }
+  return requestJson<null>('/api/auth/password/reset', {
+    body: JSON.stringify({ token, newPassword }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  })
+}
+
 function isAuthSession(value: unknown): value is AuthSession {
   if (!value || typeof value !== 'object') {
     return false
