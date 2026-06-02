@@ -186,10 +186,10 @@ export function AuthCard() {
               <span>비밀번호</span>
               <input
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                minLength={6}
+                minLength={mode === 'register' ? 8 : 6}
                 name="password"
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="비밀번호를 입력하세요"
+                placeholder={mode === 'register' ? '비밀번호 8자 이상' : '비밀번호를 입력하세요'}
                 required
                 type="password"
                 value={password}
