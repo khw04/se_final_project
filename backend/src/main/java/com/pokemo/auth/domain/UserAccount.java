@@ -72,6 +72,13 @@ public class UserAccount {
     this.emailVerified = true;
   }
 
+  public void changePassword(String passwordHash) {
+    if (passwordHash == null || passwordHash.isBlank()) {
+      throw new IllegalArgumentException("Password hash must not be blank");
+    }
+    this.passwordHash = passwordHash;
+  }
+
   public OffsetDateTime createdAt() {
     return createdAt;
   }
