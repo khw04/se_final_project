@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.pokemo.auth.domain.UserAccount;
 import com.pokemo.auth.domain.UserRole;
+import com.pokemo.auth.repository.AuthTokenRepository;
 import com.pokemo.auth.repository.UserAccountRepository;
 import com.pokemo.auth.service.JwtTokenService;
 import com.pokemo.notice.domain.Notice;
@@ -40,6 +41,9 @@ class NoticeControllerTests {
   private UserAccountRepository userAccountRepository;
 
   @Autowired
+  private AuthTokenRepository authTokenRepository;
+
+  @Autowired
   private PasswordEncoder passwordEncoder;
 
   @Autowired
@@ -48,6 +52,7 @@ class NoticeControllerTests {
   @BeforeEach
   void setUp() {
     noticeRepository.deleteAll();
+    authTokenRepository.deleteAll();
     userAccountRepository.deleteAll();
   }
 

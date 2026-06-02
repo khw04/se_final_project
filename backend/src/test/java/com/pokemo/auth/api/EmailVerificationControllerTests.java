@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.pokemo.auth.domain.EmailVerification;
 import com.pokemo.auth.domain.UserAccount;
 import com.pokemo.auth.domain.UserRole;
+import com.pokemo.auth.repository.AuthTokenRepository;
 import com.pokemo.auth.repository.EmailVerificationRepository;
 import com.pokemo.auth.repository.UserAccountRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,11 +36,15 @@ class EmailVerificationControllerTests {
   private UserAccountRepository userAccountRepository;
 
   @Autowired
+  private AuthTokenRepository authTokenRepository;
+
+  @Autowired
   private PasswordEncoder passwordEncoder;
 
   @BeforeEach
   void setUp() {
     emailVerificationRepository.deleteAll();
+    authTokenRepository.deleteAll();
     userAccountRepository.deleteAll();
   }
 
