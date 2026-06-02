@@ -1,28 +1,41 @@
-import type { Notice } from '../types'
+import type { Notice, NoticeDraft } from '../types'
 
-import { delay, iso } from './dateUtils'
-import { MOCK_NOTICES } from './mockData'
+import { apiFetch } from './client'
+
+const jsonHeaders = { 'Content-Type': 'application/json' }
 
 export const noticeApi = {
-  async getNotices(): Promise<Notice[]> {
-    await delay(70)
-    return [...MOCK_NOTICES].sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.id - a.id)
+  getNotices(): Promise<Notice[]> {
+    return apiFetch<Notice[]>('/api/notices')
   },
 
-  async createNotice(payload: Pick<Notice, 'title' | 'body' | 'tag' | 'pinned'>): Promise<Notice> {
-    await delay(120)
-    const next: Notice = {
-      ...payload,
-      id: MOCK_NOTICES.length + 10,
-      viewCount: 0,
-      author: '운영팀',
-      createdAt: iso(Date.now()),
-      updatedAt: iso(Date.now()),
-    }
-    MOCK_NOTICES.unshift(next)
-    return next
+  getNotice(id: number): Promise<Notice> {
+    return apiFetch<Notice>(`/api/notices/${id}`)
+  },
+
+  createNotice(payload: NoticeDraft): Promise<Notice> {
+    return apiFetch<Notice>('/api/notices', {
+      method: 'POST',
+      headers: jsonHeaders,
+      body: JSON.stringify(payload),
+    })
+  },
+
+  updateNotice(id: number, payload: NoticeDraft): Promise<Notice> {
+    return apiFetch<Notice>(`/api/notices/${id}`, {
+      method: 'PUT',
+      headers: jsonHeaders,
+      body: JSON.stringify(payload),
+    })
+  },
+
+  deleteNotice(id: number): Promise<void> {
+    return apiFetch<void>(`/api/notices/${id}`, { method: 'DELETE' })
   },
 }
 
 export const getNotices = noticeApi.getNotices
+export const getNotice = noticeApi.getNotice
 export const createNotice = noticeApi.createNotice
+export const updateNotice = noticeApi.updateNotice
+export const deleteNotice = noticeApi.deleteNotice
