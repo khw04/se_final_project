@@ -32,6 +32,9 @@ public class UserAccount {
   private UserRole role;
 
   @Column(nullable = false)
+  private boolean emailVerified;
+
+  @Column(nullable = false)
   private OffsetDateTime createdAt;
 
   protected UserAccount() {
@@ -41,6 +44,7 @@ public class UserAccount {
     this.email = email;
     this.passwordHash = passwordHash;
     this.role = role;
+    this.emailVerified = false;
     this.createdAt = OffsetDateTime.now();
   }
 
@@ -58,6 +62,14 @@ public class UserAccount {
 
   public UserRole role() {
     return role;
+  }
+
+  public boolean emailVerified() {
+    return emailVerified;
+  }
+
+  public void markEmailVerified() {
+    this.emailVerified = true;
   }
 
   public OffsetDateTime createdAt() {
