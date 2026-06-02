@@ -1,6 +1,7 @@
 package com.pokemo.auth.api;
 
 import com.pokemo.auth.service.AuthException;
+import java.util.stream.Collectors;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -18,8 +19,16 @@ public class AuthExceptionHandler {
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
   ResponseEntity<ApiErrorResponse> handleValidationException(MethodArgumentNotValidException exception) {
+    String message = exception.getBindingResult().getFieldErrors().stream()
+        .map(error -> error.getField() + ": " + error.getDefaultMessage())
+        .collect(Collectors.joining(", "));
+
+    if (message.isBlank()) {
+      message = "Invalid request";
+    }
+
     return ResponseEntity
         .badRequest()
-        .body(ApiErrorResponse.of("Invalid request", 400));
+        .body(ApiErrorResponse.of(message, 400));
   }
 }
