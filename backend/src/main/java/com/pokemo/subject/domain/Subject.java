@@ -1,0 +1,53 @@
+package com.pokemo.subject.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+
+@Entity
+@Table(name = "subjects", uniqueConstraints = {
+    @UniqueConstraint(name = "uk_subjects_name", columnNames = "name")
+})
+public class Subject {
+
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
+
+  @Column(nullable = false, length = 100)
+  private String name;
+
+  @Column(nullable = false, length = 7)
+  private String color;
+
+  protected Subject() {
+  }
+
+  public Subject(String name, String color) {
+    if (name == null || name.isBlank()) {
+      throw new IllegalArgumentException("Subject name must not be blank");
+    }
+    if (color == null || color.isBlank()) {
+      throw new IllegalArgumentException("Subject color must not be blank");
+    }
+
+    this.name = name;
+    this.color = color;
+  }
+
+  public Long id() {
+    return id;
+  }
+
+  public String name() {
+    return name;
+  }
+
+  public String color() {
+    return color;
+  }
+}

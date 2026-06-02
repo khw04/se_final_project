@@ -1,10 +1,13 @@
+import type { ReactNode } from 'react'
+
+import { aiApi } from '../api/aiApi'
+import { subjectById } from '../api/subjectApi'
 import { Icon } from '../components/Icon'
-import { pokemoApi } from '../pokemoApi'
 import type { PriorityRecommendation, UpcomingSubject, WeakConcept } from '../types'
 import { useApi } from '../useApi'
 
 export function RecommendScreen() {
-  const { data, loading } = useApi(() => pokemoApi.getRecommend(), [])
+  const { data, loading } = useApi(() => aiApi.getRecommend(), [])
 
   if (loading || !data) {
     return (
@@ -53,7 +56,7 @@ function PriorityRail({ items }: { items: PriorityRecommendation[] }) {
       </div>
       <ol className="priority-rail">
         {items.map((item) => {
-          const subject = pokemoApi.subjectById(item.subjectId)
+          const subject = subjectById(item.subjectId)
           return (
             <li key={item.rank} className={`priority-row priority-row--${item.tone}`}>
               <span className="priority-row__rank">{item.rank}</span>
@@ -94,10 +97,10 @@ function WeakConceptCard({ concepts }: { concepts: WeakConcept[] }) {
         최근 30일 오답에서 추출한 개념 리스트입니다. AI 응답이 없을 때는 오답 빈도만 표시됩니다.
       </p>
       <ul className="weak-list">
-        {concepts.map((concept, i) => {
-          const subject = pokemoApi.subjectById(concept.subjectId)
+        {concepts.map((concept) => {
+          const subject = subjectById(concept.subjectId)
           return (
-            <li key={i}>
+            <li key={`${concept.subjectId}-${concept.concept}`}>
               <div>
                 <p className="weak-list__concept">{concept.concept}</p>
                 <p className="weak-list__meta">
@@ -132,10 +135,10 @@ function UpcomingSubjectCard({ subjects }: { subjects: UpcomingSubject[] }) {
       </div>
       <p className="muted-note">시험까지 남은 일수가 짧고 정답률이 낮은 과목을 우선으로 정렬합니다.</p>
       <ul className="upcoming-subjects">
-        {subjects.map((subject, i) => {
-          const meta = pokemoApi.subjectById(subject.subjectId)
+        {subjects.map((subject) => {
+          const meta = subjectById(subject.subjectId)
           return (
-            <li key={i}>
+            <li key={subject.subjectId}>
               <div>
                 <p className="upcoming-subjects__name">{meta?.name}</p>
                 <p className="upcoming-subjects__meta">
@@ -154,7 +157,7 @@ function UpcomingSubjectCard({ subjects }: { subjects: UpcomingSubject[] }) {
 }
 
 function NoteSummaryCard() {
-  const { data: summary, loading, refetch } = useApi(() => pokemoApi.summarizeNote(301), [])
+  const { data: summary, loading, refetch } = useApi(() => aiApi.summarizeNote(301), [])
 
   return (
     <section className="surface">
@@ -180,8 +183,8 @@ function NoteSummaryCard() {
             </p>
             <h3 style={{ fontSize: 18, marginTop: 12 }}>핵심 {summary.bullets.length}줄</h3>
             <ul className="summary-list">
-              {summary.bullets.map((bullet, i) => (
-                <li key={i} dangerouslySetInnerHTML={{ __html: bullet.replace(/`([^`]+)`/g, '<code>$1</code>') }} />
+              {summary.bullets.map((bullet) => (
+                <li key={bullet}>{renderInlineCode(bullet)}</li>
               ))}
             </ul>
             <div className="summary-actions">
@@ -198,4 +201,14 @@ function NoteSummaryCard() {
       </div>
     </section>
   )
+}
+
+function renderInlineCode(text: string): ReactNode[] {
+  return text.split(/(`[^`]+`)/g).map((part) => {
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return <code key={part}>{part.slice(1, -1)}</code>
+    }
+
+    return part
+  })
 }

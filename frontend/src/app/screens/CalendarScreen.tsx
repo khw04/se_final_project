@@ -1,5 +1,6 @@
+import { calendarApi } from '../api/calendarApi'
+import { subjectById } from '../api/subjectApi'
 import { Icon } from '../components/Icon'
-import { pokemoApi } from '../pokemoApi'
 import type { CalendarEvent } from '../types'
 import { useApi } from '../useApi'
 
@@ -11,7 +12,7 @@ const FIRST_WEEKDAY = 1
 
 export function CalendarScreen() {
   const { data: events, loading } = useApi(
-    () => pokemoApi.getEvents({ from: '2026-06-01', to: '2026-06-30' }),
+    () => calendarApi.getEvents({ from: '2026-06-01', to: '2026-06-30' }),
     [],
   )
 
@@ -28,11 +29,16 @@ export function CalendarScreen() {
   }
 
   const dayMap: Record<number, CalendarEvent[]> = {}
+  function addEventToDay(day: number, event: CalendarEvent) {
+    if (!dayMap[day]) dayMap[day] = []
+    dayMap[day].push(event)
+  }
+
   for (const ev of events) {
     const d = new Date(ev.startAt)
     if (d.getUTCFullYear() === YEAR && d.getUTCMonth() + 1 === MONTH) {
       const day = d.getUTCDate()
-      ;(dayMap[day] ||= []).push(ev)
+      addEventToDay(day, ev)
     }
     if (ev.recurrence?.freq === 'weekly') {
       const start = new Date(ev.startAt)
@@ -40,7 +46,7 @@ export function CalendarScreen() {
         const candidate = new Date(Date.UTC(YEAR, MONTH - 1, day))
         if (candidate >= start && ev.recurrence.byweekday?.includes(candidate.getUTCDay())) {
           if (candidate.toISOString().slice(0, 10) === ev.startAt.slice(0, 10)) continue
-          ;(dayMap[day] ||= []).push(ev)
+          addEventToDay(day, ev)
         }
       }
     }
@@ -98,7 +104,7 @@ export function CalendarScreen() {
                   <span className="cal-cell__num">{cell.day}</span>
                   <div className="cal-cell__events">
                     {(dayMap[cell.day] || []).slice(0, 2).map((ev) => {
-                      const subject = pokemoApi.subjectById(ev.subjectId)
+                      const subject = subjectById(ev.subjectId)
                       const tone = ev.type === 'exam' ? 'warning' : 'accent'
                       return (
                         <span
@@ -126,7 +132,7 @@ export function CalendarScreen() {
           </div>
           <ul className="upcoming-list">
             {upcoming.map((event) => {
-              const subject = pokemoApi.subjectById(event.subjectId)
+              const subject = subjectById(event.subjectId)
               const tone = event.dDay <= 3 ? 'urgent' : 'normal'
               const dateLabel = new Date(event.startAt).toLocaleDateString('ko-KR', {
                 month: 'long',

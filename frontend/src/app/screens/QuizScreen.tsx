@@ -1,7 +1,8 @@
 import { useState } from 'react'
 
+import { quizApi } from '../api/quizApi'
+import { subjectById } from '../api/subjectApi'
 import { Icon } from '../components/Icon'
-import { pokemoApi } from '../pokemoApi'
 import type { Answer, Question, QuestionType } from '../types'
 import { useApi } from '../useApi'
 
@@ -9,7 +10,7 @@ type Picked = string | number | boolean | null
 
 export function QuizScreen() {
   const quizId = 501
-  const { data: quiz, loading } = useApi(() => pokemoApi.getQuiz(quizId), [quizId])
+  const { data: quiz, loading } = useApi(() => quizApi.getQuiz(quizId), [quizId])
 
   const [type, setType] = useState<QuestionType>('mcq')
   const [step, setStep] = useState<number>(0)
@@ -32,7 +33,7 @@ export function QuizScreen() {
   const filtered = quiz.questions.filter((q) => q.type === type)
   const total = quiz.questions.length
   const current = filtered[step % Math.max(filtered.length, 1)] ?? null
-  const subject = pokemoApi.subjectById(quiz.subjectId)
+  const subject = subjectById(quiz.subjectId)
 
   function isCorrect(q: Question, value: Picked): boolean {
     if (q.type === 'mcq') return value === q.correctIndex
@@ -182,11 +183,11 @@ export function QuizScreen() {
               <ul className="wrong-list">
                 {answers
                   .filter((a) => !a.correct)
-                  .map((_, i) => (
-                    <li key={i}>
+                  .map((answer) => (
+                    <li key={`${answer.questionId}-${String(answer.userAnswer)}-${answer.timeSpentSec}`}>
                       <Icon name="x" size={14} style={{ color: 'var(--color-warning)' }} />
                       <div>
-                        <p className="wrong-list__title">문제 {i + 1}</p>
+                        <p className="wrong-list__title">문제 {answers.indexOf(answer) + 1}</p>
                         <p className="wrong-list__detail">방금 오답 추가됨</p>
                       </div>
                     </li>
@@ -230,7 +231,7 @@ function QuestionView({ question, picked, revealed, onPick }: QuestionProps) {
                 ? 'picked'
                 : 'idle'
             return (
-              <li key={i}>
+              <li key={`${question.id}-${choice}`}>
                 <button type="button" className={`choice choice--${state}`} onClick={() => onPick(i)}>
                   <span className="choice__index">{i + 1}</span>
                   <span className="choice__body">{choice}</span>

@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 
+import { relativeKo } from '../api/calendarApi'
+import { noteApi } from '../api/noteApi'
+import { subjectApi } from '../api/subjectApi'
 import { Icon } from '../components/Icon'
-import { pokemoApi } from '../pokemoApi'
 import type { Attachment, Subject, Tag } from '../types'
 import { useApi } from '../useApi'
 
@@ -10,9 +12,9 @@ type SaveState = 'saved' | 'saving' | 'error'
 const ALL_SUBJECTS = 0
 
 export function NotesScreen() {
-  const { data: subjects } = useApi(() => pokemoApi.getSubjects(), [])
-  const { data: tags } = useApi(() => pokemoApi.getTags(), [])
-  const { data: notes } = useApi(() => pokemoApi.getNotes(), [])
+  const { data: subjects } = useApi(() => subjectApi.getSubjects(), [])
+  const { data: tags } = useApi(() => subjectApi.getTags(), [])
+  const { data: notes } = useApi(() => noteApi.getNotes(), [])
 
   const [activeId, setActiveId] = useState<number>(301)
   const [activeSubjectId, setActiveSubjectId] = useState<number>(1)
@@ -122,23 +124,24 @@ export function NotesScreen() {
                 .map((id) => tags.find((t) => t.id === id))
                 .filter((t): t is Tag => Boolean(t))
               return (
-                <li
-                  key={note.id}
-                  className={note.id === activeId ? 'is-active' : ''}
-                  onClick={() => setActiveId(note.id)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <p className="notes-list__title">{note.title}</p>
-                  <p className="notes-list__subject">
-                    {subject?.name} · {pokemoApi.relativeKo(note.updatedAt)}
-                  </p>
-                  <div className="notes-list__tags">
-                    {noteTags.map((tag) => (
-                      <span key={tag.id} className="tag">
-                        {tag.name}
-                      </span>
-                    ))}
-                  </div>
+                <li key={note.id} className={note.id === activeId ? 'is-active' : ''}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveId(note.id)}
+                    style={{ background: 'transparent', border: 0, color: 'inherit', cursor: 'pointer', font: 'inherit', padding: 0, textAlign: 'left', width: '100%' }}
+                  >
+                    <p className="notes-list__title">{note.title}</p>
+                    <p className="notes-list__subject">
+                      {subject?.name} · {relativeKo(note.updatedAt)}
+                    </p>
+                    <div className="notes-list__tags">
+                      {noteTags.map((tag) => (
+                        <span key={tag.id} className="tag">
+                          {tag.name}
+                        </span>
+                      ))}
+                    </div>
+                  </button>
                 </li>
               )
             })}
@@ -163,7 +166,7 @@ type NoteEditorProps = {
 }
 
 function NoteEditor({ noteId, subjects, tags }: NoteEditorProps) {
-  const { data: note, loading } = useApi(() => pokemoApi.getNote(noteId), [noteId])
+  const { data: note, loading } = useApi(() => noteApi.getNote(noteId), [noteId])
 
   const [body, setBody] = useState<string>('')
   const [title, setTitle] = useState<string>('')
@@ -181,7 +184,7 @@ function NoteEditor({ noteId, subjects, tags }: NoteEditorProps) {
       setBody(note.content)
       setTitle(note.title)
     })
-    pokemoApi.getAttachments(note.attachmentIds).then((nextAttachments) => {
+    noteApi.getAttachments(note.attachmentIds).then((nextAttachments) => {
       if (alive) setAttachments(nextAttachments)
     })
     return () => {
@@ -193,7 +196,7 @@ function NoteEditor({ noteId, subjects, tags }: NoteEditorProps) {
     if (!note || !dirtyRef.current) return
     setSaveState('saving')
     const timer = window.setTimeout(() => {
-      pokemoApi
+      noteApi
         .patchNote(note.id, { content: body })
         .then(() => setSaveState('saved'))
         .catch(() => setSaveState('error'))
@@ -308,36 +311,53 @@ function NoteEditor({ noteId, subjects, tags }: NoteEditorProps) {
 }
 
 function MarkdownPreview({ source }: { source: string }) {
-  const html = useMemo(() => renderMarkdown(source), [source])
-  return <div className="md" dangerouslySetInnerHTML={{ __html: html }} />
+  const nodes = useMemo(() => renderMarkdown(source), [source])
+  return <div className="md">{nodes}</div>
 }
 
-function renderMarkdown(source: string): string {
-  const escaped = source
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-
-  const lines = escaped.split('\n')
-  const out: string[] = []
+function renderMarkdown(source: string): ReactNode[] {
+  const lines = source.split('\n')
+  const out: ReactNode[] = []
+  let keySeq = 0
   let inList = false
   let inOrdered = false
   let inQuote = false
   let inCode = false
+  let listItems: ReactNode[] = []
+  let quoteItems: ReactNode[] = []
+  let codeLines: string[] = []
+  const key = () => {
+    keySeq += 1
+    return `md-${keySeq}`
+  }
   const flushList = () => {
     if (inList) {
-      out.push('</ul>')
+      out.push(<ul key={key()}>{listItems}</ul>)
       inList = false
+      listItems = []
     }
     if (inOrdered) {
-      out.push('</ol>')
+      out.push(<ol key={key()}>{listItems}</ol>)
       inOrdered = false
+      listItems = []
     }
   }
   const flushQuote = () => {
     if (inQuote) {
-      out.push('</blockquote>')
+      out.push(<blockquote key={key()}>{quoteItems}</blockquote>)
       inQuote = false
+      quoteItems = []
+    }
+  }
+  const flushCode = () => {
+    if (inCode) {
+      out.push(
+        <pre key={key()}>
+          <code>{codeLines.join('\n')}</code>
+        </pre>,
+      )
+      inCode = false
+      codeLines = []
     }
   }
 
@@ -348,45 +368,42 @@ function renderMarkdown(source: string): string {
       flushList()
       flushQuote()
       if (inCode) {
-        out.push('</code></pre>')
-        inCode = false
+        flushCode()
       } else {
-        out.push('<pre><code>')
         inCode = true
       }
       continue
     }
 
     if (inCode) {
-      out.push(line)
+      codeLines.push(line)
       continue
     }
 
     if (line.startsWith('# ')) {
       flushList()
       flushQuote()
-      out.push(`<h1>${inline(line.slice(2))}</h1>`)
+      out.push(<h1 key={key()}>{inline(line.slice(2))}</h1>)
       continue
     }
     if (line.startsWith('## ')) {
       flushList()
       flushQuote()
-      out.push(`<h2>${inline(line.slice(3))}</h2>`)
+      out.push(<h2 key={key()}>{inline(line.slice(3))}</h2>)
       continue
     }
     if (line.startsWith('### ')) {
       flushList()
       flushQuote()
-      out.push(`<h3>${inline(line.slice(4))}</h3>`)
+      out.push(<h3 key={key()}>{inline(line.slice(4))}</h3>)
       continue
     }
     if (line.startsWith('> ')) {
       flushList()
       if (!inQuote) {
-        out.push('<blockquote>')
         inQuote = true
       }
-      out.push(`<p>${inline(line.slice(2))}</p>`)
+      quoteItems.push(<p key={key()}>{inline(line.slice(2))}</p>)
       continue
     }
     if (line.startsWith('- ')) {
@@ -396,10 +413,9 @@ function renderMarkdown(source: string): string {
         inOrdered = false
       }
       if (!inList) {
-        out.push('<ul>')
         inList = true
       }
-      out.push(`<li>${inline(line.slice(2))}</li>`)
+      listItems.push(<li key={key()}>{inline(line.slice(2))}</li>)
       continue
     }
     if (/^\d+\.\s/.test(line)) {
@@ -409,16 +425,15 @@ function renderMarkdown(source: string): string {
         inList = false
       }
       if (!inOrdered) {
-        out.push('<ol>')
         inOrdered = true
       }
-      out.push(`<li>${inline(line.replace(/^\d+\.\s/, ''))}</li>`)
+      listItems.push(<li key={key()}>{inline(line.replace(/^\d+\.\s/, ''))}</li>)
       continue
     }
     if (line.startsWith('---')) {
       flushList()
       flushQuote()
-      out.push('<hr />')
+      out.push(<hr key={key()} />)
       continue
     }
     if (line.trim() === '') {
@@ -429,20 +444,30 @@ function renderMarkdown(source: string): string {
 
     flushList()
     flushQuote()
-    out.push(`<p>${inline(line)}</p>`)
+    out.push(<p key={key()}>{inline(line)}</p>)
   }
 
   flushList()
   flushQuote()
-  if (inCode) out.push('</code></pre>')
+  flushCode()
 
-  return out.join('\n')
+  return out
 
-  function inline(text: string): string {
-    return text
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
-      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-      .replace(/~~([^~]+)~~/g, '<del>$1</del>')
+  function inline(text: string): ReactNode[] {
+    return text.split(/(`[^`]+`|\*\*[^*]+\*\*|~~[^~]+~~|\*[^*]+\*)/g).map((part) => {
+      if (part.startsWith('`') && part.endsWith('`')) {
+        return <code key={key()}>{part.slice(1, -1)}</code>
+      }
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={key()}>{part.slice(2, -2)}</strong>
+      }
+      if (part.startsWith('~~') && part.endsWith('~~')) {
+        return <del key={key()}>{part.slice(2, -2)}</del>
+      }
+      if (part.startsWith('*') && part.endsWith('*')) {
+        return <em key={key()}>{part.slice(1, -1)}</em>
+      }
+      return part
+    })
   }
 }
