@@ -64,4 +64,8 @@ public class AuthToken {
   public boolean activeAt(OffsetDateTime now) {
     return !revoked && expiresAt.isAfter(now);
   }
+
+  public void revoke() {
+    this.revoked = true;
+  }
 }

@@ -95,6 +95,11 @@ public class AuthService {
     );
   }
 
+  @Transactional
+  public void logout(String refreshToken) {
+    authTokenRepository.findByToken(refreshToken).ifPresent(AuthToken::revoke);
+  }
+
   @Transactional(readOnly = true)
   public UserResponse currentUser(String email) {
     UserAccount user = userAccountRepository.findByEmail(normalizeEmail(email))
