@@ -5,6 +5,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pokemo.auth.domain.UserAccount;
 import com.pokemo.auth.domain.UserRole;
 import com.pokemo.auth.repository.AuthTokenRepository;
@@ -30,6 +32,7 @@ import org.springframework.test.web.servlet.MvcResult;
 class StatsControllerTests {
 
     @Autowired MockMvc mockMvc;
+    @Autowired ObjectMapper objectMapper;
     @Autowired UserAccountRepository userAccountRepository;
     @Autowired AuthTokenRepository authTokenRepository;
     @Autowired QuizRepository quizRepository;
@@ -60,8 +63,8 @@ class StatsControllerTests {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        accessToken = login.getResponse().getContentAsString()
-                .replaceAll(".*\"accessToken\":\"([^\"]+)\".*", "$1");
+        JsonNode loginJson = objectMapper.readTree(login.getResponse().getContentAsString());
+        accessToken = loginJson.get("accessToken").asText();
     }
 
     @Test
@@ -107,16 +110,15 @@ class StatsControllerTests {
                 .andExpect(status().isCreated())
                 .andReturn();
 
-        String quizId = createResult.getResponse().getContentAsString()
-                .replaceAll(".*\"id\":([0-9]+).*", "$1");
-        String questionId = createResult.getResponse().getContentAsString()
-                .replaceAll(".*\"questionIds\":\\[([0-9]+)\\].*", "$1");
+        JsonNode quiz = objectMapper.readTree(createResult.getResponse().getContentAsString());
+        long quizId = quiz.get("id").asLong();
+        long questionId = quiz.get("questionIds").get(0).asLong();
 
         mockMvc.perform(post("/api/quizzes/" + quizId + "/attempts")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"answers":[{"questionId":%s,"userAnswer":"true","timeSpentSec":10}]}
+                                {"answers":[{"questionId":%d,"userAnswer":"true","timeSpentSec":10}]}
                                 """.formatted(questionId)))
                 .andExpect(status().isCreated());
 

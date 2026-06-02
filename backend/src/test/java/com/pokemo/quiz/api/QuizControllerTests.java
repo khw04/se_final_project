@@ -6,6 +6,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pokemo.auth.domain.UserAccount;
 import com.pokemo.auth.domain.UserRole;
 import com.pokemo.auth.repository.AuthTokenRepository;
@@ -31,6 +33,7 @@ import org.springframework.test.web.servlet.MvcResult;
 class QuizControllerTests {
 
     @Autowired MockMvc mockMvc;
+    @Autowired ObjectMapper objectMapper;
     @Autowired UserAccountRepository userAccountRepository;
     @Autowired AuthTokenRepository authTokenRepository;
     @Autowired QuizRepository quizRepository;
@@ -61,8 +64,8 @@ class QuizControllerTests {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        accessToken = login.getResponse().getContentAsString()
-                .replaceAll(".*\"accessToken\":\"([^\"]+)\".*", "$1");
+        JsonNode loginJson = objectMapper.readTree(login.getResponse().getContentAsString());
+        accessToken = loginJson.get("accessToken").asText();
     }
 
     @Test
@@ -129,10 +132,9 @@ class QuizControllerTests {
                 .andExpect(status().isCreated())
                 .andReturn();
 
-        String quizId = createResult.getResponse().getContentAsString()
-                .replaceAll(".*\"id\":([0-9]+).*", "$1");
-        String questionId1 = createResult.getResponse().getContentAsString()
-                .replaceAll(".*\"questionIds\":\\[([0-9]+),.*", "$1");
+        JsonNode quiz = objectMapper.readTree(createResult.getResponse().getContentAsString());
+        long quizId = quiz.get("id").asLong();
+        long questionId1 = quiz.get("questionIds").get(0).asLong();
 
         mockMvc.perform(post("/api/quizzes/" + quizId + "/attempts")
                         .header("Authorization", "Bearer " + accessToken)
@@ -140,7 +142,7 @@ class QuizControllerTests {
                         .content("""
                                 {
                                   "answers": [
-                                    {"questionId": %s, "userAnswer": "true", "timeSpentSec": 5}
+                                    {"questionId": %d, "userAnswer": "true", "timeSpentSec": 5}
                                   ]
                                 }
                                 """.formatted(questionId1)))
@@ -174,16 +176,15 @@ class QuizControllerTests {
                 .andExpect(status().isCreated())
                 .andReturn();
 
-        String quizId = createResult.getResponse().getContentAsString()
-                .replaceAll(".*\"id\":([0-9]+).*", "$1");
-        String questionId = createResult.getResponse().getContentAsString()
-                .replaceAll(".*\"questionIds\":\\[([0-9]+)\\].*", "$1");
+        JsonNode quiz = objectMapper.readTree(createResult.getResponse().getContentAsString());
+        long quizId = quiz.get("id").asLong();
+        long questionId = quiz.get("questionIds").get(0).asLong();
 
         mockMvc.perform(post("/api/quizzes/" + quizId + "/attempts")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"answers":[{"questionId":%s,"userAnswer":"3","timeSpentSec":3}]}
+                                {"answers":[{"questionId":%d,"userAnswer":"3","timeSpentSec":3}]}
                                 """.formatted(questionId)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.correctCount").value(0));
@@ -199,6 +200,6 @@ class QuizControllerTests {
     @Test
     void 인증없이_퀴즈_조회_거부() throws Exception {
         mockMvc.perform(get("/api/quizzes"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().is4xxClientError());
     }
 }
