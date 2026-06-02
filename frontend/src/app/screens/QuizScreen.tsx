@@ -9,16 +9,25 @@ import { useApi } from '../useApi'
 type Picked = string | number | boolean | null
 
 export function QuizScreen() {
-  const quizId = 501
-  const { data: quiz, loading } = useApi(() => quizApi.getQuiz(quizId), [quizId])
+  const { data: quizList, loading: listLoading } = useApi(() => quizApi.listQuizzes(), [])
+  const firstQuizId = quizList?.[0]?.id ?? null
+
+  const { data: quiz, loading: quizLoading } = useApi(
+    () => (firstQuizId != null ? quizApi.getQuiz(firstQuizId) : Promise.resolve(null)),
+    [firstQuizId],
+  )
+
+  const loading = listLoading || (firstQuizId != null && quizLoading)
 
   const [type, setType] = useState<QuestionType>('mcq')
   const [step, setStep] = useState<number>(0)
   const [picked, setPicked] = useState<Picked>(null)
   const [revealed, setRevealed] = useState<boolean>(false)
   const [answers, setAnswers] = useState<Answer[]>([])
+  const [submitLoading, setSubmitLoading] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
 
-  if (loading || !quiz || !quiz.questions) {
+  if (loading) {
     return (
       <div className="screen">
         <header>
@@ -30,10 +39,23 @@ export function QuizScreen() {
     )
   }
 
+  if (!quiz || !quiz.questions || quiz.questions.length === 0) {
+    return (
+      <div className="screen">
+        <header>
+          <p className="eyebrow">퀴즈</p>
+          <h1 className="screen__heading">퀴즈 없음</h1>
+          <p className="screen__lede">아직 생성된 퀴즈가 없습니다. AI 퀴즈 생성 기능으로 노트 기반 퀴즈를 만들어보세요.</p>
+        </header>
+      </div>
+    )
+  }
+
   const filtered = quiz.questions.filter((q) => q.type === type)
   const total = quiz.questions.length
   const current = filtered[step % Math.max(filtered.length, 1)] ?? null
   const subject = subjectById(quiz.subjectId)
+  const allAnswered = answers.length >= total
 
   function isCorrect(q: Question, value: Picked): boolean {
     if (q.type === 'mcq') return value === q.correctIndex
@@ -67,6 +89,24 @@ export function QuizScreen() {
     setStep(0)
     setPicked(null)
     setRevealed(false)
+  }
+
+  async function handleSubmit() {
+    if (!quiz?.id) return
+    setSubmitLoading(true)
+    try {
+      await quizApi.submitAttempt(
+        quiz.id,
+        answers.map((a) => ({
+          questionId: a.questionId,
+          userAnswer: String(a.userAnswer),
+          timeSpentSec: a.timeSpentSec,
+        })),
+      )
+      setSubmitted(true)
+    } finally {
+      setSubmitLoading(false)
+    }
   }
 
   const stepDisplay = answers.length + 1
@@ -131,7 +171,20 @@ export function QuizScreen() {
           )}
 
           <footer className="quiz-footer">
-            {revealed ? (
+            {allAnswered ? (
+              submitted ? (
+                <p className="muted-note" style={{ textAlign: 'center' }}>✓ 제출 완료! 오답노트에서 결과를 확인하세요.</p>
+              ) : (
+                <button
+                  type="button"
+                  className="auth-card__submit quiz-submit"
+                  onClick={() => void handleSubmit()}
+                  disabled={submitLoading}
+                >
+                  {submitLoading ? '제출 중…' : '완료하기'}
+                </button>
+              )
+            ) : revealed ? (
               <button type="button" className="auth-card__submit quiz-next" onClick={next}>
                 다음 문제
                 <Icon name="arrowRight" size={16} style={{ marginLeft: 8 }} />
@@ -184,7 +237,7 @@ export function QuizScreen() {
                 {answers
                   .filter((a) => !a.correct)
                   .map((answer) => (
-                    <li key={`${answer.questionId}-${String(answer.userAnswer)}-${answer.timeSpentSec}`}>
+                    <li key={`${answer.questionId}-${String(answer.userAnswer)}`}>
                       <Icon name="x" size={14} style={{ color: 'var(--color-warning)' }} />
                       <div>
                         <p className="wrong-list__title">문제 {answers.indexOf(answer) + 1}</p>
@@ -194,10 +247,6 @@ export function QuizScreen() {
                   ))}
               </ul>
             )}
-            <button type="button" className="surface__title-action" style={{ marginTop: 12, width: '100%' }}>
-              <Icon name="refresh" size={14} style={{ marginRight: 6 }} />
-              취약 유형 재시험
-            </button>
           </section>
         </aside>
       </div>
@@ -236,9 +285,7 @@ function QuestionView({ question, picked, revealed, onPick }: QuestionProps) {
                   <span className="choice__index">{i + 1}</span>
                   <span className="choice__body">{choice}</span>
                   {revealed && isCorrect ? <Icon name="check" size={16} className="choice__icon" /> : null}
-                  {revealed && isPicked && !isCorrect ? (
-                    <Icon name="x" size={16} className="choice__icon" />
-                  ) : null}
+                  {revealed && isPicked && !isCorrect ? <Icon name="x" size={16} className="choice__icon" /> : null}
                 </button>
               </li>
             )

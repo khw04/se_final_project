@@ -1,42 +1,69 @@
-import type { Question, Quiz, WrongAnswerNote } from '../types'
+import type { Quiz, WrongAnswerNote } from '../types'
 
-import { delay, iso } from './dateUtils'
-import { MOCK_QUESTIONS, MOCK_QUIZZES, MOCK_WRONG } from './mockData'
+import { apiFetch } from './client'
 
 export type WrongAnswerQuery = { type?: 'all' | 'mcq' | 'short' | 'ox' }
 
+export type CreateQuestionRequest = {
+  type: 'MCQ' | 'SHORT' | 'OX'
+  text: string
+  choices?: string[]
+  correctIndex?: number
+  correctText?: string
+  correctBool?: boolean
+  explanation: string
+  difficulty: 'EASY' | 'MEDIUM' | 'HARD'
+  subjectId: number
+  conceptTags?: string[]
+}
+
+export type CreateQuizRequest = {
+  title: string
+  subjectId: number
+  questions: CreateQuestionRequest[]
+}
+
+export type SubmitAnswerRequest = {
+  questionId: number
+  userAnswer: string
+  timeSpentSec: number
+}
+
 export const quizApi = {
+  async listQuizzes(): Promise<Quiz[]> {
+    return apiFetch<Quiz[]>('/api/quizzes')
+  },
+
   async getQuiz(id: number): Promise<Quiz> {
-    await delay(70)
-    const quiz = MOCK_QUIZZES.find((q) => q.id === id)
-    if (!quiz) throw new Error('QUIZ_NOT_FOUND')
-    const questions = quiz.questionIds
-      .map((qid) => MOCK_QUESTIONS.find((qq) => qq.id === qid))
-      .filter((q): q is Question => Boolean(q))
-    return { ...quiz, questions }
+    return apiFetch<Quiz>(`/api/quizzes/${id}`)
+  },
+
+  async createQuiz(request: CreateQuizRequest): Promise<Quiz> {
+    return apiFetch<Quiz>('/api/quizzes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    })
+  },
+
+  async submitAttempt(quizId: number, answers: SubmitAnswerRequest[]) {
+    return apiFetch(`/api/quizzes/${quizId}/attempts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers }),
+    })
   },
 
   async getWrongAnswers(query: WrongAnswerQuery = {}): Promise<WrongAnswerNote[]> {
-    await delay(80)
-    let out = MOCK_WRONG
-    if (query.type && query.type !== 'all') out = out.filter((w) => w.question.type === query.type)
-    return out
+    const type = query.type ?? 'all'
+    return apiFetch<WrongAnswerNote[]>(`/api/wrong-answers?type=${type}`)
   },
 
   async retryWeakTypes(): Promise<Quiz> {
-    await delay(140)
-    const repeated = MOCK_WRONG.filter((w) => w.missCount >= 2)
-    return {
-      id: Date.now(),
-      title: '취약 유형 재시험',
-      subjectId: 1,
-      questionIds: repeated.map((w) => w.questionId),
-      generatedBy: 'ai-gpt',
-      createdAt: iso(Date.now()),
-    }
+    return apiFetch<Quiz>('/api/wrong-answers/retry', { method: 'POST' })
   },
 }
 
-export const getQuiz = quizApi.getQuiz
-export const getWrongAnswers = quizApi.getWrongAnswers
-export const retryWeakTypes = quizApi.retryWeakTypes
+export const getQuiz = (id: number) => quizApi.getQuiz(id)
+export const getWrongAnswers = (query?: WrongAnswerQuery) => quizApi.getWrongAnswers(query)
+export const retryWeakTypes = () => quizApi.retryWeakTypes()

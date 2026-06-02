@@ -63,7 +63,7 @@ public class StatsService {
                 .map(e -> {
                     SubjectStat s = e.getValue();
                     int accuracy = s.total() > 0 ? (int) Math.round((double) s.correct() / s.total() * 100) : 0;
-                    return new SubjectProgressResponse(e.getKey(), accuracy, s.total(), s.correct());
+                    return new SubjectProgressResponse(e.getKey(), accuracy, s.total(), s.total());
                 })
                 .toList();
     }

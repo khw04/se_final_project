@@ -4,5 +4,5 @@ public record SubjectProgressResponse(
     long subjectId,
     int accuracy,
     int attempted,
-    int correct
+    int total
 ) {}
