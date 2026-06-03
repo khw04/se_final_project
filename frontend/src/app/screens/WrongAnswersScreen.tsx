@@ -64,7 +64,7 @@ export function WrongAnswersScreen() {
           type="button"
           className="surface wa-cta"
           onClick={() => {
-            void quizApi.retryWeakTypes()
+            void quizApi.retryWeakTypes().catch(() => null)
           }}
         >
           <Icon name="refresh" size={18} />

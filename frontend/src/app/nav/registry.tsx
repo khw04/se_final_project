@@ -5,6 +5,7 @@ import { noteNavEntry } from '../screens/note/nav'
 import { noticeNavEntry } from '../screens/notice/nav'
 import { quizNavEntry } from '../screens/quiz/nav'
 import { recommendNavEntry } from '../screens/recommend/nav'
+import { statsNavEntry } from '../screens/stats/nav'
 import { wrongNavEntry } from '../screens/wrong/nav'
 
 import type { NavEntry, NavSection } from './types'
@@ -15,6 +16,7 @@ export const navRegistry: NavEntry[] = [
   noteNavEntry,
   quizNavEntry,
   wrongNavEntry,
+  statsNavEntry,
   recommendNavEntry,
   noticeNavEntry,
   passwordResetNavEntry,
