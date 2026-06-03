@@ -41,7 +41,7 @@ public class AuthService {
   public UserResponse register(RegisterRequest request) {
     String email = normalizeEmail(request.email());
     if (userAccountRepository.existsByEmail(email)) {
-      throw new AuthException(HttpStatus.CONFLICT, "Email already registered");
+      throw new AuthException(HttpStatus.CONFLICT, "이미 가입된 이메일입니다");
     }
 
     UserAccount user = new UserAccount(email, passwordEncoder.encode(request.password()), UserRole.USER);
@@ -52,10 +52,10 @@ public class AuthService {
   public AuthResponse login(LoginRequest request) {
     String email = normalizeEmail(request.email());
     UserAccount user = userAccountRepository.findByEmail(email)
-        .orElseThrow(() -> new AuthException(HttpStatus.NOT_FOUND, "Email not found"));
+        .orElseThrow(() -> new AuthException(HttpStatus.NOT_FOUND, "가입되지 않은 이메일입니다"));
 
     if (!passwordEncoder.matches(request.password(), user.passwordHash())) {
-      throw new AuthException(HttpStatus.UNAUTHORIZED, "Password does not match");
+      throw new AuthException(HttpStatus.UNAUTHORIZED, "비밀번호가 일치하지 않습니다");
     }
 
     String accessToken = jwtTokenService.createAccessToken(user);
@@ -77,10 +77,10 @@ public class AuthService {
   @Transactional
   public AuthResponse refresh(RefreshTokenRequest request) {
     AuthToken refreshToken = authTokenRepository.findByToken(request.refreshToken())
-        .orElseThrow(() -> new AuthException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
+        .orElseThrow(() -> new AuthException(HttpStatus.UNAUTHORIZED, "유효하지 않은 리프레시 토큰입니다"));
 
     if (!refreshToken.activeAt(OffsetDateTime.now())) {
-      throw new AuthException(HttpStatus.UNAUTHORIZED, "Expired refresh token");
+      throw new AuthException(HttpStatus.UNAUTHORIZED, "만료된 리프레시 토큰입니다");
     }
 
     UserAccount user = refreshToken.user();
@@ -95,10 +95,15 @@ public class AuthService {
     );
   }
 
+  @Transactional
+  public void logout(String refreshToken) {
+    authTokenRepository.findByToken(refreshToken).ifPresent(AuthToken::revoke);
+  }
+
   @Transactional(readOnly = true)
   public UserResponse currentUser(String email) {
     UserAccount user = userAccountRepository.findByEmail(normalizeEmail(email))
-        .orElseThrow(() -> new AuthException(HttpStatus.NOT_FOUND, "Email not found"));
+        .orElseThrow(() -> new AuthException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다"));
     return UserResponse.from(user);
   }
 

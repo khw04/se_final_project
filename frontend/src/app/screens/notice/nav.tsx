@@ -1,11 +1,11 @@
 import type { NavEntry } from '../../nav/types'
 
-import { NoticesScreen } from '../NoticesScreen'
+import { NoticeScreen } from './NoticeScreen'
 
 export const noticeNavEntry: NavEntry = {
   id: 'notices',
   label: '공지사항',
   section: '운영',
   icon: 'bell',
-  render: ({ session }) => <NoticesScreen session={session} />,
+  render: ({ session }) => <NoticeScreen session={session} />,
 }

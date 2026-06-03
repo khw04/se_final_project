@@ -1,3 +1,4 @@
+import { passwordResetNavEntry } from '../screens/auth/nav'
 import { calendarNavEntry } from '../screens/calendar/nav'
 import { dashboardNavEntry } from '../screens/dashboard/nav'
 import { noteNavEntry } from '../screens/note/nav'
@@ -16,6 +17,7 @@ export const navRegistry: NavEntry[] = [
   wrongNavEntry,
   recommendNavEntry,
   noticeNavEntry,
+  passwordResetNavEntry,
 ]
 
 export const fallbackNavEntry = dashboardNavEntry

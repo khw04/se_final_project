@@ -37,6 +37,12 @@ public class AuthController {
     return authService.refresh(request);
   }
 
+  @PostMapping("/logout")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  void logout(@Valid @RequestBody LogoutRequest request) {
+    authService.logout(request.refreshToken());
+  }
+
   @GetMapping("/me")
   UserResponse me(Principal principal) {
     return authService.currentUser(principal.getName());

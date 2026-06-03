@@ -159,6 +159,46 @@ class AuthControllerTests {
   }
 
   @Test
+  void logoutRevokesRefreshToken() throws Exception {
+    userAccountRepository.save(new UserAccount(
+        "student@example.com",
+        passwordEncoder.encode("password123"),
+        UserRole.USER
+    ));
+
+    MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"email":"student@example.com","password":"password123"}
+                """))
+        .andExpect(status().isOk())
+        .andReturn();
+
+    String responseBody = loginResult.getResponse().getContentAsString();
+    String accessToken = responseBody.replaceAll(".*\"accessToken\":\"([^\"]+)\".*", "$1");
+    String refreshToken = responseBody.replaceAll(".*\"refreshToken\":\"([^\"]+)\".*", "$1");
+
+    mockMvc.perform(post("/api/auth/logout")
+            .header("Authorization", "Bearer " + accessToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"refreshToken\":\"" + refreshToken + "\"}"))
+        .andExpect(status().isNoContent());
+
+    mockMvc.perform(post("/api/auth/refresh")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"refreshToken\":\"" + refreshToken + "\"}"))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void logoutRequiresAuthentication() throws Exception {
+    mockMvc.perform(post("/api/auth/logout")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"refreshToken\":\"some-token\"}"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
   void protectedEndpointRequiresAuthentication() throws Exception {
     mockMvc.perform(get("/api/protected-placeholder"))
         .andExpect(status().isForbidden());
