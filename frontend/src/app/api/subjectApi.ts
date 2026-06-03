@@ -1,25 +1,29 @@
 import type { Subject, Tag } from '../types'
 
-import { delay } from './dateUtils'
-import { MOCK_SUBJECTS, MOCK_TAGS } from './mockData'
+import { apiFetch } from './client'
+
+let subjectCache: Subject[] = []
+let tagCache: Tag[] = []
 
 export const subjectApi = {
   async getSubjects(): Promise<Subject[]> {
-    await delay(40)
-    return MOCK_SUBJECTS
+    const data = await apiFetch<Subject[]>('/api/subjects')
+    subjectCache = data
+    return data
   },
 
   async getTags(): Promise<Tag[]> {
-    await delay(30)
-    return MOCK_TAGS
+    const data = await apiFetch<Tag[]>('/api/tags')
+    tagCache = data
+    return data
   },
 
   subjectById(id: number): Subject | undefined {
-    return MOCK_SUBJECTS.find((s) => s.id === id)
+    return subjectCache.find((s) => s.id === id)
   },
 
   tagById(id: number): Tag | undefined {
-    return MOCK_TAGS.find((t) => t.id === id)
+    return tagCache.find((t) => t.id === id)
   },
 }
 
