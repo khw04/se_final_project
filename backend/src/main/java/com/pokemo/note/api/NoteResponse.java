@@ -9,6 +9,7 @@ public record NoteResponse(
     Long subjectId,
     String content,
     List<Long> tagIds,
+    List<Long> attachmentIds,
     String preview,
     String updatedAt,
     String createdAt
@@ -16,7 +17,7 @@ public record NoteResponse(
 
   private static final int PREVIEW_LENGTH = 100;
 
-  public static NoteResponse from(Note note) {
+  public static NoteResponse from(Note note, List<Long> attachmentIds) {
     String preview = note.content() == null || note.content().isBlank()
         ? ""
         : note.content().replaceAll("#+ |\\*\\*|~~|`", "").strip();
@@ -29,6 +30,7 @@ public record NoteResponse(
         note.subjectId(),
         note.content(),
         List.copyOf(note.tagIds()),
+        List.copyOf(attachmentIds),
         preview,
         note.updatedAt().toString(),
         note.createdAt().toString()

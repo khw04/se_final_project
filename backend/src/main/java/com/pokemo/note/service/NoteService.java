@@ -8,6 +8,7 @@ import com.pokemo.note.api.NoteResponse;
 import com.pokemo.note.api.TagResponse;
 import com.pokemo.note.domain.Note;
 import com.pokemo.note.domain.Tag;
+import com.pokemo.note.repository.AttachmentRepository;
 import com.pokemo.note.repository.NoteRepository;
 import com.pokemo.note.repository.TagRepository;
 import java.util.List;
@@ -20,10 +21,13 @@ public class NoteService {
 
   private final NoteRepository noteRepository;
   private final TagRepository tagRepository;
+  private final AttachmentRepository attachmentRepository;
 
-  public NoteService(NoteRepository noteRepository, TagRepository tagRepository) {
+  public NoteService(NoteRepository noteRepository, TagRepository tagRepository,
+      AttachmentRepository attachmentRepository) {
     this.noteRepository = noteRepository;
     this.tagRepository = tagRepository;
+    this.attachmentRepository = attachmentRepository;
   }
 
   @Transactional(readOnly = true)
@@ -42,19 +46,19 @@ public class NoteService {
               || n.content().toLowerCase().contains(needle))
           .toList();
     }
-    return notes.stream().map(NoteResponse::from).toList();
+    return notes.stream().map(this::toResponse).toList();
   }
 
   @Transactional(readOnly = true)
   public NoteResponse getNote(Long userId, Long id) {
-    return NoteResponse.from(findOwned(userId, id));
+    return toResponse(findOwned(userId, id));
   }
 
   @Transactional
   public NoteResponse create(Long userId, NoteRequest request) {
     Note note = new Note(userId, request.title(), request.subjectId(),
         request.content() != null ? request.content() : "");
-    return NoteResponse.from(noteRepository.save(note));
+    return toResponse(noteRepository.save(note));
   }
 
   @Transactional
@@ -62,12 +66,13 @@ public class NoteService {
     Note note = findOwned(userId, id);
     if (request.title() != null) note.updateTitle(request.title());
     if (request.content() != null) note.updateContent(request.content());
-    return NoteResponse.from(note);
+    return toResponse(note);
   }
 
   @Transactional
   public void delete(Long userId, Long id) {
     Note note = findOwned(userId, id);
+    attachmentRepository.findByNoteId(id).forEach(a -> attachmentRepository.delete(a));
     noteRepository.delete(note);
   }
 
@@ -76,14 +81,14 @@ public class NoteService {
     Note note = findOwned(userId, noteId);
     findOwnedTag(userId, tagId);
     note.addTag(tagId);
-    return NoteResponse.from(note);
+    return toResponse(note);
   }
 
   @Transactional
   public NoteResponse removeTag(Long userId, Long noteId, Long tagId) {
     Note note = findOwned(userId, noteId);
     note.removeTag(tagId);
-    return NoteResponse.from(note);
+    return toResponse(note);
   }
 
   @Transactional(readOnly = true)
@@ -100,6 +105,12 @@ public class NoteService {
     }
     Tag tag = new Tag(userId, request.name());
     return TagResponse.from(tagRepository.save(tag));
+  }
+
+  private NoteResponse toResponse(Note note) {
+    List<Long> attachmentIds = attachmentRepository.findByNoteId(note.id())
+        .stream().map(a -> a.id()).toList();
+    return NoteResponse.from(note, attachmentIds);
   }
 
   private Note findOwned(Long userId, Long id) {
