@@ -14,11 +14,17 @@ const ALL_SUBJECTS = 0
 export function NotesScreen() {
   const { data: subjects } = useApi(() => subjectApi.getSubjects(), [])
   const { data: tags } = useApi(() => subjectApi.getTags(), [])
-  const { data: notes } = useApi(() => noteApi.getNotes(), [])
+  const { data: notes, refetch: refetchNotes } = useApi(() => noteApi.getNotes(), [])
 
-  const [activeId, setActiveId] = useState<number>(301)
-  const [activeSubjectId, setActiveSubjectId] = useState<number>(1)
+  const [activeId, setActiveId] = useState<number | null>(null)
+  const [activeSubjectId, setActiveSubjectId] = useState<number>(0)
   const [query, setQuery] = useState<string>('')
+
+  async function handleCreateNote() {
+    const note = await noteApi.createNote('새 노트', activeSubjectId || undefined)
+    await refetchNotes()
+    setActiveId(note.id)
+  }
 
   if (!subjects || !tags || !notes) {
     return (
@@ -112,7 +118,7 @@ export function NotesScreen() {
             <h2>
               {activeSubject ? `${activeSubject.name} · ${filteredNotes.length}개` : `전체 · ${filteredNotes.length}개`}
             </h2>
-            <button type="button" className="surface__title-action">
+            <button type="button" className="surface__title-action" onClick={handleCreateNote}>
               <Icon name="plus" size={14} style={{ marginRight: 4 }} />
               새 노트
             </button>
@@ -153,7 +159,10 @@ export function NotesScreen() {
           </ul>
         </section>
 
-        <NoteEditor noteId={activeId} subjects={subjects} tags={tags} />
+        {activeId !== null
+          ? <NoteEditor noteId={activeId} subjects={subjects} tags={tags} onSaved={refetchNotes} />
+          : <section className="surface notes-editor" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text)' }}>노트를 선택하거나 새 노트를 만드세요.</section>
+        }
       </div>
     </div>
   )
@@ -163,17 +172,40 @@ type NoteEditorProps = {
   noteId: number
   subjects: Subject[]
   tags: Tag[]
+  onSaved?: () => void
 }
 
-function NoteEditor({ noteId, subjects, tags }: NoteEditorProps) {
+function NoteEditor({ noteId, subjects, tags, onSaved }: NoteEditorProps) {
   const { data: note, loading } = useApi(() => noteApi.getNote(noteId), [noteId])
 
   const [body, setBody] = useState<string>('')
   const [title, setTitle] = useState<string>('')
+  const [currentTagIds, setCurrentTagIds] = useState<number[]>([])
+  const [showTagPicker, setShowTagPicker] = useState(false)
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [saveState, setSaveState] = useState<SaveState>('saved')
 
   const dirtyRef = useRef<boolean>(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  async function handleImageAttach(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !note) return
+    const uploaded = await noteApi.uploadAttachment(note.id, file)
+    setAttachments((prev) => [...prev, uploaded])
+    e.target.value = ''
+  }
+
+  async function handleTagToggle(tagId: number) {
+    if (!note) return
+    if (currentTagIds.includes(tagId)) {
+      const updated = await noteApi.removeTagFromNote(note.id, tagId)
+      setCurrentTagIds(updated.tagIds)
+    } else {
+      const updated = await noteApi.addTagToNote(note.id, tagId)
+      setCurrentTagIds(updated.tagIds)
+    }
+  }
 
   useEffect(() => {
     if (!note) return
@@ -183,6 +215,7 @@ function NoteEditor({ noteId, subjects, tags }: NoteEditorProps) {
       if (!alive) return
       setBody(note.content)
       setTitle(note.title)
+      setCurrentTagIds(note.tagIds)
     })
     noteApi.getAttachments(note.attachmentIds).then((nextAttachments) => {
       if (alive) setAttachments(nextAttachments)
@@ -197,12 +230,16 @@ function NoteEditor({ noteId, subjects, tags }: NoteEditorProps) {
     setSaveState('saving')
     const timer = window.setTimeout(() => {
       noteApi
-        .patchNote(note.id, { content: body })
-        .then(() => setSaveState('saved'))
+        .patchNote(note.id, { content: body, title })
+        .then(() => {
+          setSaveState('saved')
+          onSaved?.()
+        })
         .catch(() => setSaveState('error'))
     }, 2000)
     return () => window.clearTimeout(timer)
-  }, [body, note])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [body, title, note])
 
   function onBodyChange(next: string) {
     dirtyRef.current = true
@@ -214,7 +251,7 @@ function NoteEditor({ noteId, subjects, tags }: NoteEditorProps) {
   }
 
   const subject = subjects.find((s) => s.id === note.subjectId)
-  const noteTags = note.tagIds.map((id) => tags.find((t) => t.id === id)).filter((t): t is Tag => Boolean(t))
+  const noteTags = currentTagIds.map((id) => tags.find((t) => t.id === id)).filter((t): t is Tag => Boolean(t))
 
   function formatBytes(n: number) {
     if (n < 1024) return `${n} B`
@@ -237,16 +274,30 @@ function NoteEditor({ noteId, subjects, tags }: NoteEditorProps) {
             setTitle(event.target.value)
           }}
         />
-        <div className="notes-editor__meta">
+        <div className="notes-editor__meta" style={{ position: 'relative' }}>
           {subject ? <span className="tag tag--accent">{subject.name}</span> : null}
           {noteTags.map((tag) => (
             <span key={tag.id} className="tag">
               {tag.name}
             </span>
           ))}
-          <button type="button" className="notes-editor__add-tag" aria-label="태그 추가">
+          <button type="button" className="notes-editor__add-tag" aria-label="태그 추가" onClick={() => setShowTagPicker((v) => !v)}>
             <Icon name="plus" size={14} />
           </button>
+          {showTagPicker && tags.length > 0 && (
+            <div style={{ position: 'absolute', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, padding: 8, zIndex: 10, display: 'flex', flexWrap: 'wrap', gap: 6, maxWidth: 240 }}>
+              {tags.map((tag) => (
+                <button
+                  key={tag.id}
+                  type="button"
+                  className={`tag ${currentTagIds.includes(tag.id) ? 'tag--accent' : ''}`}
+                  onClick={() => handleTagToggle(tag.id)}
+                >
+                  {currentTagIds.includes(tag.id) ? '✓ ' : ''}{tag.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -296,7 +347,14 @@ function NoteEditor({ noteId, subjects, tags }: NoteEditorProps) {
           {saveLabel}
         </span>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button type="button" className="surface__title-action">
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={handleImageAttach}
+          />
+          <button type="button" className="surface__title-action" onClick={() => fileInputRef.current?.click()}>
             <Icon name="image" size={14} style={{ marginRight: 4 }} />
             이미지 첨부
           </button>

@@ -1,25 +1,47 @@
 import type { CalendarEvent } from '../types'
 
-import { calcDDay as calcDDayValue, delay, relativeKo as relativeKoValue, TODAY } from './dateUtils'
-import { MOCK_EVENTS } from './mockData'
+import { apiFetch } from './client'
+import { calcDDay as calcDDayValue, relativeKo as relativeKoValue, TODAY } from './dateUtils'
 
 export type EventRange = { from?: string; to?: string }
 
+function toDateTimeFrom(date: string): string {
+  return date.includes('T') ? date : `${date}T00:00:00+09:00`
+}
+
+function toDateTimeTo(date: string): string {
+  return date.includes('T') ? date : `${date}T23:59:59+09:00`
+}
+
+export type CreateEventRequest = {
+  title: string
+  subjectId?: number | null
+  startAt: string
+  endAt?: string
+  allDay: boolean
+  type: string
+  reminder?: string
+}
+
 export const calendarApi = {
   async getEvents(range?: EventRange): Promise<CalendarEvent[]> {
-    await delay(80)
-    let out = [...MOCK_EVENTS]
-    if (range?.from) {
-      const from = range.from
-      out = out.filter((e) => e.startAt >= from)
-    }
-    if (range?.to) {
-      const to = range.to
-      out = out.filter((e) => e.startAt <= to)
-    }
-    return out
-      .map((e) => ({ ...e, dDay: calcDDayValue(e.startAt) }))
-      .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
+    const params = new URLSearchParams()
+    if (range?.from) params.set('from', toDateTimeFrom(range.from))
+    if (range?.to) params.set('to', toDateTimeTo(range.to))
+    const query = params.toString() ? `?${params.toString()}` : ''
+    return apiFetch<CalendarEvent[]>(`/api/events${query}`)
+  },
+
+  async createEvent(req: CreateEventRequest): Promise<CalendarEvent> {
+    return apiFetch<CalendarEvent>('/api/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req),
+    })
+  },
+
+  async deleteEvent(id: number): Promise<void> {
+    await apiFetch(`/api/events/${id}`, { method: 'DELETE' })
   },
 
   today(): string {
