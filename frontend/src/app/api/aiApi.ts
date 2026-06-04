@@ -1,23 +1,29 @@
-import type { NoteSummary, RecommendPayload } from '../types'
+import type { NoteSummary, Quiz, RecommendPayload } from '../types'
 
-import { delay, iso } from './dateUtils'
-import { MOCK_PRIORITY, MOCK_SUMMARY, MOCK_UPCOMING_SUBJECTS, MOCK_WEAK_CONCEPTS } from './mockData'
+import { apiFetch } from './client'
 
 export const aiApi = {
   async getRecommend(): Promise<RecommendPayload> {
-    await delay(150)
-    return {
-      priorities: MOCK_PRIORITY,
-      weakConcepts: MOCK_WEAK_CONCEPTS,
-      upcomingSubjects: MOCK_UPCOMING_SUBJECTS,
-    }
+    return apiFetch<RecommendPayload>('/api/recommend')
   },
 
   async summarizeNote(noteId: number): Promise<NoteSummary> {
-    await delay(900)
-    return { ...MOCK_SUMMARY, noteId, generatedAt: iso(Date.now()) }
+    return apiFetch<NoteSummary>('/api/ai/summary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ noteId }),
+    })
+  },
+
+  async generateQuiz(noteId: number, count = 5): Promise<Quiz> {
+    return apiFetch<Quiz>('/api/quiz/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ noteId, count }),
+    })
   },
 }
 
 export const getRecommend = aiApi.getRecommend
 export const summarizeNote = aiApi.summarizeNote
+export const generateQuiz = aiApi.generateQuiz
