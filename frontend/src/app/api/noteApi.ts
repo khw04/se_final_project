@@ -46,7 +46,11 @@ export const noteApi = {
   async getNotes(query: NoteQuery = {}): Promise<Note[]> {
     const params = new URLSearchParams()
     if (query.subjectId) params.set('subjectId', String(query.subjectId))
-    if (query.tagIds?.length) query.tagIds.forEach((t) => params.append('tagIds', String(t)))
+    if (query.tagIds?.length) {
+      query.tagIds.forEach((t) => {
+        params.append('tagIds', String(t))
+      })
+    }
     if (query.q) params.set('q', query.q)
     const q = params.toString() ? `?${params.toString()}` : ''
     return apiFetch<BackendNote[]>(`/api/notes${q}`)
