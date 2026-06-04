@@ -31,3 +31,7 @@ pokemo:
     secret: ${JWT_SECRET:dev-only-secret-key-must-be-at-least-32-bytes-long}
     access-token-ttl-minutes: ${JWT_ACCESS_TOKEN_TTL_MINUTES:30}
     refresh-token-ttl-days: ${JWT_REFRESH_TOKEN_TTL_DAYS:14}
+  ai:
+    api-key: ${GEMINI_API_KEY:}
+    model: ${GEMINI_MODEL:gemini-2.0-flash}
+    timeout-seconds: ${GEMINI_TIMEOUT_SECONDS:8}

@@ -52,7 +52,20 @@ public class QuizService {
     }
 
     public QuizResponse createQuiz(long userId, QuizRequest request) {
-        Quiz quiz = new Quiz(request.title(), request.subjectId(), userId, GeneratedBy.MANUAL);
+        Quiz quiz = createQuizEntity(userId, request, GeneratedBy.MANUAL, null);
+        return toQuizResponse(quizRepository.save(quiz));
+    }
+
+    public QuizResponse createAiQuiz(long userId, long noteId, QuizRequest request) {
+        Quiz quiz = createQuizEntity(userId, request, GeneratedBy.AI_GEMINI, noteId);
+        return toQuizResponse(quizRepository.save(quiz));
+    }
+
+    private Quiz createQuizEntity(long userId, QuizRequest request, GeneratedBy generatedBy, Long noteId) {
+        Quiz quiz = new Quiz(request.title(), request.subjectId(), userId, generatedBy);
+        if (noteId != null) {
+            quiz.setGeneratedFromNoteId(noteId);
+        }
 
         List<Question> savedQuestions = new ArrayList<>();
         for (QuestionRequest qr : request.questions()) {
@@ -69,7 +82,7 @@ public class QuizService {
             quiz.addQuestion(savedQuestions.get(i), i);
         }
 
-        return toQuizResponse(quizRepository.save(quiz));
+        return quiz;
     }
 
     @Transactional(readOnly = true)
