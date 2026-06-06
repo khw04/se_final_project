@@ -1,6 +1,6 @@
 import type { Attachment, Note } from '../types'
 
-import { apiFetch, apiBaseUrl } from './client'
+import { apiBaseUrl, apiFetch } from './client'
 
 export type NoteQuery = { subjectId?: number; tagIds?: number[]; q?: string }
 
@@ -56,7 +56,7 @@ export const noteApi = {
     return apiFetch<BackendNote[]>(`/api/notes${q}`)
   },
 
-  async patchNote(id: number, partial: Partial<Pick<Note, 'content' | 'title'>>): Promise<Note> {
+  async patchNote(id: number, partial: Partial<Pick<Note, 'content' | 'subjectId' | 'title'>>): Promise<Note> {
     return apiFetch<BackendNote>(`/api/notes/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
