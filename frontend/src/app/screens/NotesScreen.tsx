@@ -11,12 +11,16 @@ type SaveState = 'saved' | 'saving' | 'error'
 
 const ALL_SUBJECTS = 0
 
-export function NotesScreen() {
+type NotesScreenProps = {
+  initialNoteId?: number
+}
+
+export function NotesScreen({ initialNoteId }: NotesScreenProps) {
   const { data: subjects } = useApi(() => subjectApi.getSubjects(), [])
   const { data: tags } = useApi(() => subjectApi.getTags(), [])
   const { data: notes, refetch: refetchNotes } = useApi(() => noteApi.getNotes(), [])
 
-  const [activeId, setActiveId] = useState<number | null>(null)
+  const [activeId, setActiveId] = useState<number | null>(initialNoteId ?? null)
   const [activeSubjectId, setActiveSubjectId] = useState<number>(0)
   const [query, setQuery] = useState<string>('')
 
@@ -186,6 +190,7 @@ function NoteEditor({ noteId, subjects, tags, onSaved }: NoteEditorProps) {
   const [saveState, setSaveState] = useState<SaveState>('saved')
 
   const dirtyRef = useRef<boolean>(false)
+  const onSavedRef = useRef(onSaved)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   async function handleImageAttach(e: React.ChangeEvent<HTMLInputElement>) {
@@ -226,6 +231,10 @@ function NoteEditor({ noteId, subjects, tags, onSaved }: NoteEditorProps) {
   }, [note])
 
   useEffect(() => {
+    onSavedRef.current = onSaved
+  }, [onSaved])
+
+  useEffect(() => {
     if (!note || !dirtyRef.current) return
     setSaveState('saving')
     const timer = window.setTimeout(() => {
@@ -233,12 +242,11 @@ function NoteEditor({ noteId, subjects, tags, onSaved }: NoteEditorProps) {
         .patchNote(note.id, { content: body, title })
         .then(() => {
           setSaveState('saved')
-          onSaved?.()
+          onSavedRef.current?.()
         })
         .catch(() => setSaveState('error'))
     }, 2000)
     return () => window.clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [body, title, note])
 
   function onBodyChange(next: string) {

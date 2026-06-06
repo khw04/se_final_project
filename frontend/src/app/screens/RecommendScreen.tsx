@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
+import { useState } from 'react'
 
 import { aiApi } from '../api/aiApi'
 import { noteApi } from '../api/noteApi'
@@ -7,7 +8,11 @@ import { Icon } from '../components/Icon'
 import type { Note, PriorityRecommendation, UpcomingSubject, WeakConcept } from '../types'
 import { useApi } from '../useApi'
 
-export function RecommendScreen() {
+type RecommendScreenProps = {
+  onOpenNote?: (noteId: number) => void
+}
+
+export function RecommendScreen({ onOpenNote }: RecommendScreenProps) {
   const { data, loading } = useApi(() => aiApi.getRecommend(), [])
 
   if (loading || !data) {
@@ -43,7 +48,7 @@ export function RecommendScreen() {
         <UpcomingSubjectCard subjects={data.upcomingSubjects} />
       </div>
 
-      <NoteSummaryCard />
+      <NoteSummaryCard onOpenNote={onOpenNote} />
     </div>
   )
 }
@@ -157,7 +162,7 @@ function UpcomingSubjectCard({ subjects }: { subjects: UpcomingSubject[] }) {
   )
 }
 
-function NoteSummaryCard() {
+function NoteSummaryCard({ onOpenNote }: { onOpenNote?: (noteId: number) => void }) {
   const { data: notes, loading: notesLoading } = useApi(() => noteApi.getNotes(), [])
   const [selectedNoteId, setSelectedNoteId] = useState<number | null>(null)
   const [summary, setSummary] = useState<Awaited<ReturnType<typeof aiApi.summarizeNote>> | null>(null)
@@ -237,7 +242,14 @@ function NoteSummaryCard() {
                 <Icon name="brain" size={14} style={{ marginRight: 6 }} />
                 {generating ? '퀴즈 생성 중...' : '이 노트로 퀴즈 생성'}
               </button>
-              <button type="button" className="surface__title-action">
+              <button
+                type="button"
+                className="surface__title-action"
+                onClick={() => {
+                  if (effectiveNoteId !== null) onOpenNote?.(effectiveNoteId)
+                }}
+                disabled={effectiveNoteId === null || !onOpenNote}
+              >
                 <Icon name="book" size={14} style={{ marginRight: 6 }} />
                 원본 노트 열기
               </button>
