@@ -201,7 +201,6 @@ function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated }: NoteE
   const [currentTagIds, setCurrentTagIds] = useState<number[]>([])
   const [createdSubjects, setCreatedSubjects] = useState<Subject[]>([])
   const [showSubjectPicker, setShowSubjectPicker] = useState(false)
-  const [showTagPicker, setShowTagPicker] = useState(false)
   const [newSubjectName, setNewSubjectName] = useState('')
   const [subjectError, setSubjectError] = useState<string | null>(null)
   const [subjectSubmitting, setSubjectSubmitting] = useState(false)
@@ -218,17 +217,6 @@ function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated }: NoteE
     const uploaded = await noteApi.uploadAttachment(note.id, file)
     setAttachments((prev) => [...prev, uploaded])
     e.target.value = ''
-  }
-
-  async function handleTagToggle(tagId: number) {
-    if (!note) return
-    if (currentTagIds.includes(tagId)) {
-      const updated = await noteApi.removeTagFromNote(note.id, tagId)
-      setCurrentTagIds(updated.tagIds)
-    } else {
-      const updated = await noteApi.addTagToNote(note.id, tagId)
-      setCurrentTagIds(updated.tagIds)
-    }
   }
 
   async function handleSubjectSelect(subjectId: number) {
@@ -351,7 +339,6 @@ function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated }: NoteE
             aria-expanded={showSubjectPicker}
             onClick={() => {
               setShowSubjectPicker((value) => !value)
-              setShowTagPicker(false)
             }}
           >
             <Icon name="plus" size={14} />
@@ -361,18 +348,6 @@ function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated }: NoteE
               {tag.name}
             </span>
           ))}
-          <button
-            type="button"
-            className="notes-editor__add-tag"
-            aria-label="태그 추가"
-            aria-expanded={showTagPicker}
-            onClick={() => {
-              setShowTagPicker((value) => !value)
-              setShowSubjectPicker(false)
-            }}
-          >
-            <Icon name="plus" size={14} />
-          </button>
           {showSubjectPicker && (
             <div className="notes-editor__picker">
               {availableSubjects.map((item) => (
@@ -397,20 +372,6 @@ function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated }: NoteE
                 </button>
               </form>
               {subjectError ? <p className="notes-editor__picker-error">{subjectError}</p> : null}
-            </div>
-          )}
-          {showTagPicker && tags.length > 0 && (
-            <div className="notes-editor__picker">
-              {tags.map((tag) => (
-                <button
-                  key={tag.id}
-                  type="button"
-                  className={`tag ${currentTagIds.includes(tag.id) ? 'tag--accent' : ''}`}
-                  onClick={() => handleTagToggle(tag.id)}
-                >
-                  {currentTagIds.includes(tag.id) ? '✓ ' : ''}{tag.name}
-                </button>
-              ))}
             </div>
           )}
         </div>
