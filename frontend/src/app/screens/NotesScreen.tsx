@@ -206,6 +206,7 @@ function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated }: NoteE
   const [subjectSubmitting, setSubjectSubmitting] = useState(false)
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [saveState, setSaveState] = useState<SaveState>('saved')
+  const [isPreviewVisible, setIsPreviewVisible] = useState(false)
 
   const dirtyRef = useRef<boolean>(false)
   const onSavedRef = useRef(onSaved)
@@ -318,6 +319,7 @@ function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated }: NoteE
   const saveLabel =
     saveState === 'saved' ? '자동 저장됨 · 방금 전' : saveState === 'saving' ? '저장 중...' : '저장 실패'
   const saveIcon = saveState === 'saved' ? 'check' : saveState === 'error' ? 'x' : 'clock'
+  const previewId = `notes-editor-preview-${note.id}`
 
   return (
     <section className="surface notes-editor">
@@ -377,6 +379,21 @@ function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated }: NoteE
         </div>
       </div>
 
+      <div className="notes-editor__toolbar">
+        <p className="notes-editor__toolbar-copy">본문은 넓게 작성하고, 필요할 때 Markdown 미리보기를 켜세요.</p>
+        <button
+          type="button"
+          className={`surface__title-action notes-editor__preview-toggle ${isPreviewVisible ? 'is-active' : ''}`}
+          aria-controls={previewId}
+          aria-expanded={isPreviewVisible}
+          aria-pressed={isPreviewVisible}
+          onClick={() => setIsPreviewVisible((value) => !value)}
+        >
+          <Icon name="book" size={14} style={{ marginRight: 4 }} />
+          {isPreviewVisible ? '미리보기 숨기기' : 'Markdown 미리보기'}
+        </button>
+      </div>
+
       <div className="notes-editor__split">
         <div className="notes-editor__ta-wrap">
           <textarea
@@ -386,9 +403,11 @@ function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated }: NoteE
             aria-label="Markdown 본문"
           />
         </div>
-        <div className="notes-editor__preview">
-          <MarkdownPreview source={body} />
-        </div>
+        {isPreviewVisible ? (
+          <div id={previewId} className="notes-editor__preview">
+            <MarkdownPreview source={body} />
+          </div>
+        ) : null}
       </div>
 
       {attachments.length > 0 ? (
