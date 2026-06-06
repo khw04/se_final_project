@@ -1,10 +1,10 @@
+import { recommendNavEntry } from '../screens/ai/nav'
 import { passwordResetNavEntry } from '../screens/auth/nav'
 import { calendarNavEntry } from '../screens/calendar/nav'
 import { dashboardNavEntry } from '../screens/dashboard/nav'
 import { noteNavEntry } from '../screens/note/nav'
 import { noticeNavEntry } from '../screens/notice/nav'
 import { quizNavEntry } from '../screens/quiz/nav'
-import { recommendNavEntry } from '../screens/recommend/nav'
 import { statsNavEntry } from '../screens/stats/nav'
 import { wrongNavEntry } from '../screens/wrong/nav'
 
