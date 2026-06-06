@@ -99,6 +99,10 @@
   align-items: start;
 }
 
+.app-layout:has(.notes-screen) {
+  max-width: min(calc(100vw - (var(--space-5) * 2)), var(--layout-notes));
+}
+
 .app-main { min-width: 0; }
 
 .sidebar {
@@ -673,13 +677,13 @@
 /* Notes */
 .notes-layout {
   display: grid;
-  grid-template-columns: 240px 280px minmax(0, 1fr);
-  gap: var(--space-4);
+  grid-template-columns: calc(var(--space-10) * 3) var(--space-12) minmax(0, 1fr);
+  gap: var(--space-5);
   align-items: start;
 }
 
 @media (max-width: 1200px) {
-  .notes-layout { grid-template-columns: 220px 1fr; }
+  .notes-layout { grid-template-columns: calc(var(--space-13) - var(--space-10)) minmax(0, 1fr); }
   .notes-list { display: none; }
 }
 
@@ -689,8 +693,12 @@
 }
 
 .notes-left,
-.notes-list,
-.notes-editor { padding: var(--space-4); min-height: 600px; }
+.notes-list { padding: var(--space-4); min-height: calc(var(--space-13) + var(--space-10)); }
+
+.notes-editor {
+  min-height: calc(var(--space-13) + var(--space-12));
+  padding: var(--space-6);
+}
 
 .notes-search {
   align-items: center;
@@ -765,7 +773,7 @@
 .notes-list__subject { color: var(--color-muted); font-size: 12px; margin: 4px 0 8px; }
 .notes-list__tags { display: flex; flex-wrap: wrap; gap: 4px; }
 
-.notes-editor__top { border-bottom: 1px solid var(--color-line); padding-bottom: var(--space-3); margin-bottom: var(--space-4); }
+.notes-editor__top { border-bottom: 1px solid var(--color-line); padding-bottom: var(--space-4); margin-bottom: var(--space-5); }
 
 .notes-editor__title {
   background: transparent;
@@ -845,8 +853,8 @@
 .notes-editor__split {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-4);
-  min-height: 360px;
+  gap: var(--space-5);
+  min-height: calc(var(--space-13) + var(--space-8));
 }
 
 @media (max-width: 1400px) {
@@ -863,9 +871,9 @@
   font-size: 14px;
   line-height: 1.6;
   outline: none;
-  padding: var(--space-4);
+  padding: var(--space-5);
   resize: vertical;
-  min-height: 360px;
+  min-height: calc(var(--space-13) + var(--space-8));
   width: 100%;
 }
 
@@ -885,8 +893,8 @@
   font-size: 14px;
   line-height: 1.6;
   overflow: auto;
-  padding: var(--space-4);
-  max-height: 540px;
+  padding: var(--space-5);
+  max-height: calc(var(--space-13) + var(--space-12));
 }
 
 .notes-editor__preview h1 { font-size: 22px; margin: 0 0 12px; }
