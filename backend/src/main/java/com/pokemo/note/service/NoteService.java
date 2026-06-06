@@ -65,6 +65,7 @@ public class NoteService {
   public NoteResponse patch(Long userId, Long id, NotePatchRequest request) {
     Note note = findOwned(userId, id);
     if (request.title() != null) note.updateTitle(request.title());
+    if (request.subjectId() != null) note.updateSubject(request.subjectId());
     if (request.content() != null) note.updateContent(request.content());
     return toResponse(note);
   }

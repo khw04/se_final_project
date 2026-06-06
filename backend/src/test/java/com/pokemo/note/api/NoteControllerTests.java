@@ -104,6 +104,31 @@ class NoteControllerTests {
   }
 
   @Test
+  void patchNoteUpdatesSubject() throws Exception {
+    String token = token();
+    MvcResult result = mockMvc.perform(post("/api/notes")
+            .header("Authorization", "Bearer " + token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"title":"과목변경","subjectId":1,"content":""}
+                """))
+        .andExpect(status().isCreated())
+        .andReturn();
+
+    String id = result.getResponse().getContentAsString()
+        .replaceAll(".*\"id\":(\\d+).*", "$1");
+
+    mockMvc.perform(patch("/api/notes/" + id)
+            .header("Authorization", "Bearer " + token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"subjectId":2}
+                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.subjectId").value(2));
+  }
+
+  @Test
   void deleteNoteReturns204() throws Exception {
     String token = token();
     MvcResult result = mockMvc.perform(post("/api/notes")
