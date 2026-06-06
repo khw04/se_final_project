@@ -248,8 +248,8 @@ function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated }: NoteE
       setNewSubjectName('')
       onSubjectCreated?.(subject)
       await handleSubjectSelect(subject.id)
-    } catch {
-      setSubjectError('과목을 추가하지 못했습니다.')
+    } catch (error) {
+      setSubjectError(error instanceof Error ? error.message : '과목을 추가하지 못했습니다.')
     } finally {
       setSubjectSubmitting(false)
     }
