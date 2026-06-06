@@ -912,7 +912,7 @@
   line-height: 1.6;
   overflow: auto;
   padding: var(--space-5);
-  max-height: calc(var(--space-13) + var(--space-12));
+  min-height: calc(var(--space-13) + var(--space-8));
 }
 
 .notes-editor__preview h1 { font-size: 22px; margin: 0 0 12px; }

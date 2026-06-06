@@ -390,24 +390,25 @@ function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated }: NoteE
           onClick={() => setIsPreviewVisible((value) => !value)}
         >
           <Icon name="book" size={14} style={{ marginRight: 4 }} />
-          {isPreviewVisible ? '미리보기 숨기기' : 'Markdown 미리보기'}
+          {isPreviewVisible ? '작성으로 돌아가기' : 'Markdown 보기'}
         </button>
       </div>
 
       <div className="notes-editor__split">
-        <div className="notes-editor__ta-wrap">
-          <textarea
-            className="notes-editor__textarea"
-            value={body}
-            onChange={(event) => onBodyChange(event.target.value)}
-            aria-label="Markdown 본문"
-          />
-        </div>
         {isPreviewVisible ? (
           <div id={previewId} className="notes-editor__preview">
             <MarkdownPreview source={body} />
           </div>
-        ) : null}
+        ) : (
+          <div className="notes-editor__ta-wrap">
+            <textarea
+              className="notes-editor__textarea"
+              value={body}
+              onChange={(event) => onBodyChange(event.target.value)}
+              aria-label="Markdown 본문"
+            />
+          </div>
+        )}
       </div>
 
       {attachments.length > 0 ? (
