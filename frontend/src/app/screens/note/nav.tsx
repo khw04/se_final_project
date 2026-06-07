@@ -7,5 +7,5 @@ export const noteNavEntry: NavEntry = {
   label: '노트',
   section: '학습',
   icon: 'book',
-  render: () => <NotesScreen />,
+  render: ({ options }) => <NotesScreen key={options?.noteId ?? 'all'} initialNoteId={options?.noteId} />,
 }

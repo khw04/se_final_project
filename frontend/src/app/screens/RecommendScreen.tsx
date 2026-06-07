@@ -1,12 +1,18 @@
 import type { ReactNode } from 'react'
+import { useState } from 'react'
 
 import { aiApi } from '../api/aiApi'
+import { noteApi } from '../api/noteApi'
 import { subjectById } from '../api/subjectApi'
 import { Icon } from '../components/Icon'
-import type { PriorityRecommendation, UpcomingSubject, WeakConcept } from '../types'
+import type { Note, PriorityRecommendation, UpcomingSubject, WeakConcept } from '../types'
 import { useApi } from '../useApi'
 
-export function RecommendScreen() {
+type RecommendScreenProps = {
+  onOpenNote?: (noteId: number) => void
+}
+
+export function RecommendScreen({ onOpenNote }: RecommendScreenProps) {
   const { data, loading } = useApi(() => aiApi.getRecommend(), [])
 
   if (loading || !data) {
@@ -42,7 +48,7 @@ export function RecommendScreen() {
         <UpcomingSubjectCard subjects={data.upcomingSubjects} />
       </div>
 
-      <NoteSummaryCard />
+      <NoteSummaryCard onOpenNote={onOpenNote} />
     </div>
   )
 }
@@ -156,8 +162,43 @@ function UpcomingSubjectCard({ subjects }: { subjects: UpcomingSubject[] }) {
   )
 }
 
-function NoteSummaryCard() {
-  const { data: summary, loading, refetch } = useApi(() => aiApi.summarizeNote(301), [])
+function NoteSummaryCard({ onOpenNote }: { onOpenNote?: (noteId: number) => void }) {
+  const { data: notes, loading: notesLoading } = useApi(() => noteApi.getNotes(), [])
+  const [selectedNoteId, setSelectedNoteId] = useState<number | null>(null)
+  const [summary, setSummary] = useState<Awaited<ReturnType<typeof aiApi.summarizeNote>> | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [message, setMessage] = useState('')
+
+  const effectiveNoteId = selectedNoteId ?? notes?.[0]?.id ?? null
+  const selectedNote = notes?.find((note) => note.id === effectiveNoteId) ?? null
+
+  async function summarize() {
+    if (effectiveNoteId === null) return
+    setLoading(true)
+    setMessage('')
+    try {
+      setSummary(await aiApi.summarizeNote(effectiveNoteId))
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '요약에 실패했습니다.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function generateQuiz() {
+    if (effectiveNoteId === null) return
+    setGenerating(true)
+    setMessage('')
+    try {
+      const quiz = await aiApi.generateQuiz(effectiveNoteId)
+      setMessage(`AI 퀴즈가 생성되었습니다: ${quiz.title}`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '퀴즈 생성에 실패했습니다.')
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   return (
     <section className="surface">
@@ -166,32 +207,49 @@ function NoteSummaryCard() {
           <Icon name="book" size={18} style={{ marginRight: 6 }} />
           학습 내용 요약 (★AI)
         </h2>
-        <button type="button" className="surface__title-action" onClick={refetch} disabled={loading}>
+        <button type="button" className="surface__title-action" onClick={summarize} disabled={loading || effectiveNoteId === null}>
           <Icon name="refresh" size={14} style={{ marginRight: 6 }} />
           {loading ? '요약 중...' : '다시 요약'}
         </button>
       </div>
       <div className="summary-block">
-        {loading || !summary ? (
-          <p className="muted-note">GPT/Gemini API 로 노트를 요약하는 중입니다.</p>
+        {notesLoading ? (
+          <p className="muted-note">노트 목록을 불러오는 중입니다.</p>
+        ) : !notes?.length ? (
+          <p className="muted-note">요약할 노트가 없습니다. 먼저 노트를 작성하세요.</p>
         ) : (
           <>
-            <p className="muted-note">
-              미적분 · "극한의 정의" 노트 ({summary.sourceCharCount.toLocaleString()}자 →{' '}
-              {summary.summaryCharCount}자 요약)
-              {summary.fallback ? ' · AI 실패 → 첫 문단 표시' : ''}
-            </p>
-            <h3 style={{ fontSize: 18, marginTop: 12 }}>핵심 {summary.bullets.length}줄</h3>
-            <ul className="summary-list">
-              {summary.bullets.map((bullet) => (
-                <li key={bullet}>{renderInlineCode(bullet)}</li>
-              ))}
-            </ul>
+            <NotePicker notes={notes} selectedNoteId={effectiveNoteId} onChange={setSelectedNoteId} />
+            {message ? <p className="muted-note" style={{ marginTop: 12 }}>{message}</p> : null}
+            {loading ? <p className="muted-note">Gemini API로 노트를 요약하는 중입니다.</p> : null}
+            {summary ? (
+              <>
+                <p className="muted-note">
+                  {selectedNote?.title ?? '선택한 노트'} ({summary.sourceCharCount.toLocaleString()}자 →{' '}
+                  {summary.summaryCharCount}자 요약)
+                  {summary.fallback ? ' · fallback 응답' : ''}
+                </p>
+                <h3 style={{ fontSize: 18, marginTop: 12 }}>핵심 {summary.bullets.length}줄</h3>
+                <ul className="summary-list">
+                  {summary.bullets.map((bullet) => (
+                    <li key={bullet}>{renderInlineCode(bullet)}</li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
             <div className="summary-actions">
-              <button type="button" className="surface__title-action">
-                <Icon name="brain" size={14} style={{ marginRight: 6 }} />이 요약으로 퀴즈 생성
+              <button type="button" className="surface__title-action" onClick={generateQuiz} disabled={generating || effectiveNoteId === null}>
+                <Icon name="brain" size={14} style={{ marginRight: 6 }} />
+                {generating ? '퀴즈 생성 중...' : '이 노트로 퀴즈 생성'}
               </button>
-              <button type="button" className="surface__title-action">
+              <button
+                type="button"
+                className="surface__title-action"
+                onClick={() => {
+                  if (effectiveNoteId !== null) onOpenNote?.(effectiveNoteId)
+                }}
+                disabled={effectiveNoteId === null || !onOpenNote}
+              >
                 <Icon name="book" size={14} style={{ marginRight: 6 }} />
                 원본 노트 열기
               </button>
@@ -200,6 +258,19 @@ function NoteSummaryCard() {
         )}
       </div>
     </section>
+  )
+}
+
+function NotePicker({ notes, selectedNoteId, onChange }: { notes: Note[]; selectedNoteId: number | null; onChange: (id: number) => void }) {
+  return (
+    <label className="label" style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
+      요약할 노트
+      <select value={selectedNoteId ?? ''} onChange={(event) => onChange(Number(event.target.value))}>
+        {notes.map((note) => (
+          <option key={note.id} value={note.id}>{note.title}</option>
+        ))}
+      </select>
+    </label>
   )
 }
 

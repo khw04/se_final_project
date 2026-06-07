@@ -10,13 +10,18 @@ import { useApi } from '../useApi'
 type SaveState = 'saved' | 'saving' | 'error'
 
 const ALL_SUBJECTS = 0
+const DEFAULT_SUBJECT_COLOR = '#243f6b'
 
-export function NotesScreen() {
-  const { data: subjects } = useApi(() => subjectApi.getSubjects(), [])
+type NotesScreenProps = {
+  initialNoteId?: number
+}
+
+export function NotesScreen({ initialNoteId }: NotesScreenProps) {
+  const { data: subjects, refetch: refetchSubjects } = useApi(() => subjectApi.getSubjects(), [])
   const { data: tags } = useApi(() => subjectApi.getTags(), [])
   const { data: notes, refetch: refetchNotes } = useApi(() => noteApi.getNotes(), [])
 
-  const [activeId, setActiveId] = useState<number | null>(null)
+  const [activeId, setActiveId] = useState<number | null>(initialNoteId ?? null)
   const [activeSubjectId, setActiveSubjectId] = useState<number>(0)
   const [query, setQuery] = useState<string>('')
 
@@ -160,7 +165,18 @@ export function NotesScreen() {
         </section>
 
         {activeId !== null
-          ? <NoteEditor noteId={activeId} subjects={subjects} tags={tags} onSaved={refetchNotes} />
+          ? (
+              <NoteEditor
+                noteId={activeId}
+                subjects={subjects}
+                tags={tags}
+                onSaved={refetchNotes}
+                onSubjectCreated={(subject) => {
+                  setActiveSubjectId(subject.id)
+                  refetchSubjects()
+                }}
+              />
+            )
           : <section className="surface notes-editor" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text)' }}>노트를 선택하거나 새 노트를 만드세요.</section>
         }
       </div>
@@ -173,19 +189,27 @@ type NoteEditorProps = {
   subjects: Subject[]
   tags: Tag[]
   onSaved?: () => void
+  onSubjectCreated?: (subject: Subject) => void
 }
 
-function NoteEditor({ noteId, subjects, tags, onSaved }: NoteEditorProps) {
+function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated }: NoteEditorProps) {
   const { data: note, loading } = useApi(() => noteApi.getNote(noteId), [noteId])
 
   const [body, setBody] = useState<string>('')
   const [title, setTitle] = useState<string>('')
+  const [currentSubjectId, setCurrentSubjectId] = useState<number | null>(null)
   const [currentTagIds, setCurrentTagIds] = useState<number[]>([])
-  const [showTagPicker, setShowTagPicker] = useState(false)
+  const [createdSubjects, setCreatedSubjects] = useState<Subject[]>([])
+  const [showSubjectPicker, setShowSubjectPicker] = useState(false)
+  const [newSubjectName, setNewSubjectName] = useState('')
+  const [subjectError, setSubjectError] = useState<string | null>(null)
+  const [subjectSubmitting, setSubjectSubmitting] = useState(false)
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [saveState, setSaveState] = useState<SaveState>('saved')
+  const [isPreviewVisible, setIsPreviewVisible] = useState(false)
 
   const dirtyRef = useRef<boolean>(false)
+  const onSavedRef = useRef(onSaved)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   async function handleImageAttach(e: React.ChangeEvent<HTMLInputElement>) {
@@ -196,14 +220,39 @@ function NoteEditor({ noteId, subjects, tags, onSaved }: NoteEditorProps) {
     e.target.value = ''
   }
 
-  async function handleTagToggle(tagId: number) {
+  async function handleSubjectSelect(subjectId: number) {
     if (!note) return
-    if (currentTagIds.includes(tagId)) {
-      const updated = await noteApi.removeTagFromNote(note.id, tagId)
-      setCurrentTagIds(updated.tagIds)
-    } else {
-      const updated = await noteApi.addTagToNote(note.id, tagId)
-      setCurrentTagIds(updated.tagIds)
+    setSubjectError(null)
+    setSaveState('saving')
+    try {
+      const updated = await noteApi.patchNote(note.id, { subjectId })
+      setCurrentSubjectId(updated.subjectId)
+      setShowSubjectPicker(false)
+      setSaveState('saved')
+      onSavedRef.current?.()
+    } catch {
+      setSaveState('error')
+      setSubjectError('과목을 변경하지 못했습니다.')
+    }
+  }
+
+  async function handleSubjectCreate(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const name = newSubjectName.trim()
+    if (!name) return
+
+    setSubjectSubmitting(true)
+    setSubjectError(null)
+    try {
+      const subject = await subjectApi.createSubject({ name, color: DEFAULT_SUBJECT_COLOR })
+      setCreatedSubjects((prev) => [...prev.filter((item) => item.id !== subject.id), subject])
+      setNewSubjectName('')
+      onSubjectCreated?.(subject)
+      await handleSubjectSelect(subject.id)
+    } catch (error) {
+      setSubjectError(error instanceof Error ? error.message : '과목을 추가하지 못했습니다.')
+    } finally {
+      setSubjectSubmitting(false)
     }
   }
 
@@ -215,6 +264,7 @@ function NoteEditor({ noteId, subjects, tags, onSaved }: NoteEditorProps) {
       if (!alive) return
       setBody(note.content)
       setTitle(note.title)
+      setCurrentSubjectId(note.subjectId)
       setCurrentTagIds(note.tagIds)
     })
     noteApi.getAttachments(note.attachmentIds).then((nextAttachments) => {
@@ -226,6 +276,10 @@ function NoteEditor({ noteId, subjects, tags, onSaved }: NoteEditorProps) {
   }, [note])
 
   useEffect(() => {
+    onSavedRef.current = onSaved
+  }, [onSaved])
+
+  useEffect(() => {
     if (!note || !dirtyRef.current) return
     setSaveState('saving')
     const timer = window.setTimeout(() => {
@@ -233,12 +287,11 @@ function NoteEditor({ noteId, subjects, tags, onSaved }: NoteEditorProps) {
         .patchNote(note.id, { content: body, title })
         .then(() => {
           setSaveState('saved')
-          onSaved?.()
+          onSavedRef.current?.()
         })
         .catch(() => setSaveState('error'))
     }, 2000)
     return () => window.clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [body, title, note])
 
   function onBodyChange(next: string) {
@@ -250,7 +303,11 @@ function NoteEditor({ noteId, subjects, tags, onSaved }: NoteEditorProps) {
     return <section className="surface notes-editor" style={{ opacity: 0.4 }} />
   }
 
-  const subject = subjects.find((s) => s.id === note.subjectId)
+  const availableSubjects = [
+    ...subjects,
+    ...createdSubjects.filter((created) => !subjects.some((subject) => subject.id === created.id)),
+  ]
+  const subject = availableSubjects.find((s) => s.id === currentSubjectId)
   const noteTags = currentTagIds.map((id) => tags.find((t) => t.id === id)).filter((t): t is Tag => Boolean(t))
 
   function formatBytes(n: number) {
@@ -262,6 +319,7 @@ function NoteEditor({ noteId, subjects, tags, onSaved }: NoteEditorProps) {
   const saveLabel =
     saveState === 'saved' ? '자동 저장됨 · 방금 전' : saveState === 'saving' ? '저장 중...' : '저장 실패'
   const saveIcon = saveState === 'saved' ? 'check' : saveState === 'error' ? 'x' : 'clock'
+  const previewId = `notes-editor-preview-${note.id}`
 
   return (
     <section className="surface notes-editor">
@@ -276,43 +334,81 @@ function NoteEditor({ noteId, subjects, tags, onSaved }: NoteEditorProps) {
         />
         <div className="notes-editor__meta" style={{ position: 'relative' }}>
           {subject ? <span className="tag tag--accent">{subject.name}</span> : null}
+          <button
+            type="button"
+            className="notes-editor__add-tag"
+            aria-label="과목 선택"
+            aria-expanded={showSubjectPicker}
+            onClick={() => {
+              setShowSubjectPicker((value) => !value)
+            }}
+          >
+            <Icon name="plus" size={14} />
+          </button>
           {noteTags.map((tag) => (
             <span key={tag.id} className="tag">
               {tag.name}
             </span>
           ))}
-          <button type="button" className="notes-editor__add-tag" aria-label="태그 추가" onClick={() => setShowTagPicker((v) => !v)}>
-            <Icon name="plus" size={14} />
-          </button>
-          {showTagPicker && tags.length > 0 && (
-            <div style={{ position: 'absolute', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, padding: 8, zIndex: 10, display: 'flex', flexWrap: 'wrap', gap: 6, maxWidth: 240 }}>
-              {tags.map((tag) => (
+          {showSubjectPicker && (
+            <div className="notes-editor__picker">
+              {availableSubjects.map((item) => (
                 <button
-                  key={tag.id}
+                  key={item.id}
                   type="button"
-                  className={`tag ${currentTagIds.includes(tag.id) ? 'tag--accent' : ''}`}
-                  onClick={() => handleTagToggle(tag.id)}
+                  className={`tag ${currentSubjectId === item.id ? 'tag--accent' : ''}`}
+                  onClick={() => handleSubjectSelect(item.id)}
                 >
-                  {currentTagIds.includes(tag.id) ? '✓ ' : ''}{tag.name}
+                  {currentSubjectId === item.id ? '✓ ' : ''}{item.name}
                 </button>
               ))}
+              <form className="notes-editor__picker-form" onSubmit={handleSubjectCreate}>
+                <input
+                  className="notes-editor__picker-input"
+                  placeholder="새 과목 이름"
+                  value={newSubjectName}
+                  onChange={(event) => setNewSubjectName(event.target.value)}
+                />
+                <button type="submit" className="surface__title-action" disabled={subjectSubmitting || !newSubjectName.trim()}>
+                  {subjectSubmitting ? '추가 중...' : '추가'}
+                </button>
+              </form>
+              {subjectError ? <p className="notes-editor__picker-error">{subjectError}</p> : null}
             </div>
           )}
         </div>
       </div>
 
+      <div className="notes-editor__toolbar">
+        <p className="notes-editor__toolbar-copy">본문은 넓게 작성하고, 필요할 때 Markdown 미리보기를 켜세요.</p>
+        <button
+          type="button"
+          className={`surface__title-action notes-editor__preview-toggle ${isPreviewVisible ? 'is-active' : ''}`}
+          aria-controls={previewId}
+          aria-expanded={isPreviewVisible}
+          aria-pressed={isPreviewVisible}
+          onClick={() => setIsPreviewVisible((value) => !value)}
+        >
+          <Icon name="book" size={14} style={{ marginRight: 4 }} />
+          {isPreviewVisible ? '작성으로 돌아가기' : 'Markdown 보기'}
+        </button>
+      </div>
+
       <div className="notes-editor__split">
-        <div className="notes-editor__ta-wrap">
-          <textarea
-            className="notes-editor__textarea"
-            value={body}
-            onChange={(event) => onBodyChange(event.target.value)}
-            aria-label="Markdown 본문"
-          />
-        </div>
-        <div className="notes-editor__preview">
-          <MarkdownPreview source={body} />
-        </div>
+        {isPreviewVisible ? (
+          <div id={previewId} className="notes-editor__preview">
+            <MarkdownPreview source={body} />
+          </div>
+        ) : (
+          <div className="notes-editor__ta-wrap">
+            <textarea
+              className="notes-editor__textarea"
+              value={body}
+              onChange={(event) => onBodyChange(event.target.value)}
+              aria-label="Markdown 본문"
+            />
+          </div>
+        )}
       </div>
 
       {attachments.length > 0 ? (

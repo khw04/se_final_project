@@ -7,5 +7,5 @@ export const recommendNavEntry: NavEntry = {
   label: 'AI 추천',
   section: '인사이트',
   icon: 'sparkle',
-  render: () => <RecommendScreen />,
+  render: ({ navigate }) => <RecommendScreen onOpenNote={(noteId) => navigate('notes', { noteId })} />,
 }

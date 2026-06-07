@@ -68,6 +68,11 @@ public class Note {
     this.updatedAt = OffsetDateTime.now();
   }
 
+  public void updateSubject(Long subjectId) {
+    this.subjectId = subjectId;
+    this.updatedAt = OffsetDateTime.now();
+  }
+
   public void update(String title, Long subjectId, String content) {
     this.title = title;
     this.subjectId = subjectId;
