@@ -257,7 +257,7 @@ function buildAuthorizeUrl(provider: OAuthProvider, state: string, redirectUri: 
     client_id: oauthClientIds.kakao,
     redirect_uri: redirectUri,
     response_type: 'code',
-    scope: 'account_email profile_nickname',
+    scope: 'profile_nickname',
     state,
   })
   return `https://kauth.kakao.com/oauth/authorize?${params.toString()}`
