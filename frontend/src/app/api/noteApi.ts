@@ -16,12 +16,15 @@ type BackendAttachment = {
 }
 
 function toAttachment(a: BackendAttachment): Attachment {
+  const urlBase = apiBaseUrl.endsWith('/api') && a.url.startsWith('/api/')
+    ? apiBaseUrl.slice(0, -4)
+    : apiBaseUrl
   return {
     id: a.id,
     name: a.name,
     mimeType: a.mimeType,
     size: a.size,
-    url: `${apiBaseUrl}${a.url}`,
+    url: `${urlBase}${a.url}`,
     uploadedAt: '',
   }
 }
@@ -34,13 +37,13 @@ export const noteApi = {
   async getAttachments(ids: number[]): Promise<Attachment[]> {
     if (!ids.length) return []
     const results = await Promise.all(
-      ids.map((id) => apiFetch<BackendAttachment>(`/api/attachments/${id}`).catch(() => null))
+      ids.map((id) => apiFetch<BackendAttachment>(`/attachments/${id}`).catch(() => null))
     )
     return results.filter((a): a is BackendAttachment => a !== null).map(toAttachment)
   },
 
   async getNote(id: number): Promise<Note> {
-    return apiFetch<BackendNote>(`/api/notes/${id}`)
+    return apiFetch<BackendNote>(`/notes/${id}`)
   },
 
   async getNotes(query: NoteQuery = {}): Promise<Note[]> {
@@ -53,11 +56,11 @@ export const noteApi = {
     }
     if (query.q) params.set('q', query.q)
     const q = params.toString() ? `?${params.toString()}` : ''
-    return apiFetch<BackendNote[]>(`/api/notes${q}`)
+    return apiFetch<BackendNote[]>(`/notes${q}`)
   },
 
   async patchNote(id: number, partial: Partial<Pick<Note, 'content' | 'subjectId' | 'title'>>): Promise<Note> {
-    return apiFetch<BackendNote>(`/api/notes/${id}`, {
+    return apiFetch<BackendNote>(`/notes/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(partial),
@@ -65,7 +68,7 @@ export const noteApi = {
   },
 
   async createNote(title: string, subjectId?: number): Promise<Note> {
-    return apiFetch<BackendNote>('/api/notes', {
+    return apiFetch<BackendNote>('/notes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title, subjectId: subjectId ?? null, content: '' }),
@@ -73,17 +76,17 @@ export const noteApi = {
   },
 
   async addTagToNote(noteId: number, tagId: number): Promise<Note> {
-    return apiFetch<BackendNote>(`/api/notes/${noteId}/tags/${tagId}`, { method: 'POST' })
+    return apiFetch<BackendNote>(`/notes/${noteId}/tags/${tagId}`, { method: 'POST' })
   },
 
   async removeTagFromNote(noteId: number, tagId: number): Promise<Note> {
-    return apiFetch<BackendNote>(`/api/notes/${noteId}/tags/${tagId}`, { method: 'DELETE' })
+    return apiFetch<BackendNote>(`/notes/${noteId}/tags/${tagId}`, { method: 'DELETE' })
   },
 
   async uploadAttachment(noteId: number, file: File): Promise<Attachment> {
     const formData = new FormData()
     formData.append('file', file)
-    const data = await apiFetch<BackendAttachment>(`/api/notes/${noteId}/attachments`, {
+    const data = await apiFetch<BackendAttachment>(`/notes/${noteId}/attachments`, {
       method: 'POST',
       body: formData,
     })

@@ -7,5 +7,5 @@ export const dashboardNavEntry: NavEntry = {
   label: '대시보드',
   section: '학습',
   icon: 'dashboard',
-  render: ({ session, navigate }) => <DashboardScreen session={session} onJumpTo={navigate} />,
+  render: ({ session, navigate, studyTimer }) => <DashboardScreen session={session} onJumpTo={navigate} studyTimer={studyTimer} />,
 }

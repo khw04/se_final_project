@@ -31,15 +31,15 @@ export type SubmitAnswerRequest = {
 
 export const quizApi = {
   async listQuizzes(): Promise<Quiz[]> {
-    return apiFetch<Quiz[]>('/api/quizzes')
+    return apiFetch<Quiz[]>('/quizzes')
   },
 
   async getQuiz(id: number): Promise<Quiz> {
-    return apiFetch<Quiz>(`/api/quizzes/${id}`)
+    return apiFetch<Quiz>(`/quizzes/${id}`)
   },
 
   async createQuiz(request: CreateQuizRequest): Promise<Quiz> {
-    return apiFetch<Quiz>('/api/quizzes', {
+    return apiFetch<Quiz>('/quizzes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(request),
@@ -47,7 +47,7 @@ export const quizApi = {
   },
 
   async submitAttempt(quizId: number, answers: SubmitAnswerRequest[]) {
-    return apiFetch(`/api/quizzes/${quizId}/attempts`, {
+    return apiFetch(`/quizzes/${quizId}/attempts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ answers }),
@@ -56,11 +56,11 @@ export const quizApi = {
 
   async getWrongAnswers(query: WrongAnswerQuery = {}): Promise<WrongAnswerNote[]> {
     const type = query.type ?? 'all'
-    return apiFetch<WrongAnswerNote[]>(`/api/wrong-answers?type=${type}`)
+    return apiFetch<WrongAnswerNote[]>(`/wrong-answers?type=${type}`)
   },
 
   async retryWeakTypes(): Promise<Quiz> {
-    return apiFetch<Quiz>('/api/wrong-answers/retry', { method: 'POST' })
+    return apiFetch<Quiz>('/wrong-answers/retry', { method: 'POST' })
   },
 }
 

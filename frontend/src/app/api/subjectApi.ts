@@ -12,13 +12,13 @@ type CreateSubjectInput = {
 
 export const subjectApi = {
   async getSubjects(): Promise<Subject[]> {
-    const data = await apiFetch<Subject[]>('/api/subjects')
+    const data = await apiFetch<Subject[]>('/subjects')
     subjectCache = data
     return data
   },
 
   async createSubject(input: CreateSubjectInput): Promise<Subject> {
-    const subject = await apiFetch<Subject>('/api/subjects', {
+    const subject = await apiFetch<Subject>('/subjects', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -28,7 +28,7 @@ export const subjectApi = {
   },
 
   async getTags(): Promise<Tag[]> {
-    const data = await apiFetch<Tag[]>('/api/tags')
+    const data = await apiFetch<Tag[]>('/tags')
     tagCache = data
     return data
   },

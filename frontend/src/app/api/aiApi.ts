@@ -4,11 +4,11 @@ import { apiFetch } from './client'
 
 export const aiApi = {
   async getRecommend(): Promise<RecommendPayload> {
-    return apiFetch<RecommendPayload>('/api/recommend')
+    return apiFetch<RecommendPayload>('/recommend')
   },
 
   async summarizeNote(noteId: number): Promise<NoteSummary> {
-    return apiFetch<NoteSummary>('/api/ai/summary', {
+    return apiFetch<NoteSummary>('/ai/summary', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ noteId }),
@@ -16,7 +16,7 @@ export const aiApi = {
   },
 
   async generateQuiz(noteId: number, count = 5): Promise<Quiz> {
-    return apiFetch<Quiz>('/api/quiz/generate', {
+    return apiFetch<Quiz>('/quiz/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ noteId, count }),

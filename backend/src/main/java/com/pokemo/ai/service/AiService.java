@@ -16,9 +16,11 @@ import com.pokemo.quiz.api.QuestionRequest;
 import com.pokemo.quiz.api.QuizRequest;
 import com.pokemo.quiz.api.QuizResponse;
 import com.pokemo.quiz.domain.Difficulty;
+import com.pokemo.quiz.domain.Quiz;
 import com.pokemo.quiz.domain.QuestionType;
 import com.pokemo.quiz.domain.WrongAnswerNote;
 import com.pokemo.quiz.repository.QuizAttemptRepository;
+import com.pokemo.quiz.repository.QuizRepository;
 import com.pokemo.quiz.repository.WrongAnswerNoteRepository;
 import com.pokemo.quiz.service.QuizService;
 import java.time.LocalDate;
@@ -38,6 +40,7 @@ public class AiService {
   private final ObjectMapper objectMapper;
   private final NoteRepository noteRepository;
   private final QuizService quizService;
+  private final QuizRepository quizRepository;
   private final WrongAnswerNoteRepository wrongAnswerNoteRepository;
   private final CalendarEventRepository calendarEventRepository;
   private final QuizAttemptRepository quizAttemptRepository;
@@ -47,6 +50,7 @@ public class AiService {
       ObjectMapper objectMapper,
       NoteRepository noteRepository,
       QuizService quizService,
+      QuizRepository quizRepository,
       WrongAnswerNoteRepository wrongAnswerNoteRepository,
       CalendarEventRepository calendarEventRepository,
       QuizAttemptRepository quizAttemptRepository
@@ -55,6 +59,7 @@ public class AiService {
     this.objectMapper = objectMapper;
     this.noteRepository = noteRepository;
     this.quizService = quizService;
+    this.quizRepository = quizRepository;
     this.wrongAnswerNoteRepository = wrongAnswerNoteRepository;
     this.calendarEventRepository = calendarEventRepository;
     this.quizAttemptRepository = quizAttemptRepository;
@@ -92,16 +97,22 @@ public class AiService {
   public QuizResponse generateQuiz(long userId, long noteId, int count) {
     Note note = findOwnedNote(userId, noteId);
     String content = requireContent(note);
+    String recentQuestions = recentQuestionTexts(userId, noteId);
     String prompt = """
         다음 학습 노트로 퀴즈 %d개를 생성해라.
         반드시 JSON만 반환해라. 형식:
         {"title":"노트 기반 퀴즈","questions":[{"type":"MCQ|SHORT|OX","text":"문제","choices":["A","B","C","D"],"correctIndex":0,"correctText":"정답","correctBool":true,"explanation":"해설","difficulty":"EASY|MEDIUM|HARD","conceptTags":["개념"]}]}
         MCQ는 choices 4개와 correctIndex를 포함하고, SHORT는 correctText, OX는 correctBool을 포함한다.
+        이전에 낸 문제와 같은 문장, 같은 수치, 같은 보기 조합을 반복하지 마라.
+        문제 유형은 가능한 한 MCQ, SHORT, OX가 섞이게 하고, 개념 태그도 서로 다르게 배분해라.
+        같은 개념을 묻더라도 상황, 조건, 표현, 오답 선택지를 바꿔 새 문제처럼 만들어라.
+        최근 생성된 문제 목록:
+        %s
 
         제목: %s
         내용:
         %s
-        """.formatted(count, note.title(), content);
+        """.formatted(count, recentQuestions, note.title(), content);
 
     try {
       JsonNode root = parseJson(aiClient.generateText(prompt));
@@ -161,6 +172,17 @@ public class AiService {
       throw new AiClientException("AI가 생성한 문제가 없습니다.");
     }
     return new QuizRequest(title, note.subjectId() == null ? 1L : note.subjectId(), questions);
+  }
+
+  private String recentQuestionTexts(long userId, long noteId) {
+    List<String> texts = quizRepository.findByCreatedByOrderByCreatedAtDesc(userId).stream()
+        .filter(quiz -> quiz.generatedFromNoteId() != null && quiz.generatedFromNoteId().equals(noteId))
+        .limit(5)
+        .flatMap((Quiz quiz) -> quiz.quizQuestions().stream())
+        .map(quizQuestion -> "- " + quizQuestion.question().text())
+        .limit(20)
+        .toList();
+    return texts.isEmpty() ? "- 없음" : String.join("\n", texts);
   }
 
   private QuestionRequest toQuestionRequest(JsonNode node, Long fallbackSubjectId) {

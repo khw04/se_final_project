@@ -4,15 +4,15 @@ import { apiFetch } from './client'
 
 export const statsApi = {
   async getAccuracyTrend(): Promise<AccuracyTrendPoint[]> {
-    return apiFetch<AccuracyTrendPoint[]>('/api/stats/trend')
+    return apiFetch<AccuracyTrendPoint[]>('/stats/trend')
   },
 
   async getSubjectProgress(): Promise<SubjectProgress[]> {
-    return apiFetch<SubjectProgress[]>('/api/stats/progress')
+    return apiFetch<SubjectProgress[]>('/stats/progress')
   },
 
   async getWeeklyStudy(): Promise<WeeklyStudyPoint[]> {
-    return apiFetch<WeeklyStudyPoint[]>('/api/stats/weekly')
+    return apiFetch<WeeklyStudyPoint[]>('/stats/weekly')
   },
 }
 

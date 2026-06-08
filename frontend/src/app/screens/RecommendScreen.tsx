@@ -3,6 +3,7 @@ import { useState } from 'react'
 
 import { aiApi } from '../api/aiApi'
 import { noteApi } from '../api/noteApi'
+import { quizApi } from '../api/quizApi'
 import { subjectById } from '../api/subjectApi'
 import { Icon } from '../components/Icon'
 import type { Note, PriorityRecommendation, UpcomingSubject, WeakConcept } from '../types'
@@ -10,10 +11,26 @@ import { useApi } from '../useApi'
 
 type RecommendScreenProps = {
   onOpenNote?: (noteId: number) => void
+  onOpenQuiz?: (quizId: number) => void
 }
 
-export function RecommendScreen({ onOpenNote }: RecommendScreenProps) {
-  const { data, loading } = useApi(() => aiApi.getRecommend(), [])
+export function RecommendScreen({ onOpenNote, onOpenQuiz }: RecommendScreenProps) {
+  const { data, loading, refetch } = useApi(() => aiApi.getRecommend(), [])
+  const [weakGenerating, setWeakGenerating] = useState(false)
+  const [weakMessage, setWeakMessage] = useState('')
+
+  async function generateWeakQuiz() {
+    setWeakGenerating(true)
+    setWeakMessage('')
+    try {
+      const quiz = await quizApi.retryWeakTypes()
+      onOpenQuiz?.(quiz.id)
+    } catch (error) {
+      setWeakMessage(error instanceof Error ? error.message : '취약 개념 퀴즈 생성에 실패했습니다.')
+    } finally {
+      setWeakGenerating(false)
+    }
+  }
 
   if (loading || !data) {
     return (
@@ -41,14 +58,20 @@ export function RecommendScreen({ onOpenNote }: RecommendScreenProps) {
         </p>
       </header>
 
+      <NoteSummaryCard onOpenNote={onOpenNote} onOpenQuiz={onOpenQuiz} />
+
       <PriorityRail items={data.priorities} />
 
       <div className="recommend-cols">
-        <WeakConceptCard concepts={data.weakConcepts} />
+        <WeakConceptCard
+          concepts={data.weakConcepts}
+          generating={weakGenerating}
+          message={weakMessage}
+          onRefresh={refetch}
+          onGenerateQuiz={generateWeakQuiz}
+        />
         <UpcomingSubjectCard subjects={data.upcomingSubjects} />
       </div>
-
-      <NoteSummaryCard onOpenNote={onOpenNote} />
     </div>
   )
 }
@@ -87,7 +110,19 @@ function PriorityRail({ items }: { items: PriorityRecommendation[] }) {
   )
 }
 
-function WeakConceptCard({ concepts }: { concepts: WeakConcept[] }) {
+function WeakConceptCard({
+  concepts,
+  generating,
+  message,
+  onRefresh,
+  onGenerateQuiz,
+}: {
+  concepts: WeakConcept[]
+  generating: boolean
+  message: string
+  onRefresh: () => void
+  onGenerateQuiz: () => void
+}) {
   return (
     <section className="surface">
       <div className="surface__title">
@@ -95,7 +130,7 @@ function WeakConceptCard({ concepts }: { concepts: WeakConcept[] }) {
           <Icon name="sparkle" size={18} style={{ marginRight: 6 }} />
           취약 개념 분석
         </h2>
-        <button type="button" className="surface__title-action">
+        <button type="button" className="surface__title-action" onClick={onRefresh}>
           새로고침
         </button>
       </div>
@@ -121,9 +156,16 @@ function WeakConceptCard({ concepts }: { concepts: WeakConcept[] }) {
           )
         })}
       </ul>
-      <button type="button" className="surface__title-action" style={{ marginTop: 16, width: '100%' }}>
+      {message ? <p className="muted-note" style={{ marginTop: 12 }}>{message}</p> : null}
+      <button
+        type="button"
+        className="surface__title-action"
+        style={{ marginTop: 16, width: '100%' }}
+        onClick={onGenerateQuiz}
+        disabled={generating || concepts.length === 0}
+      >
         <Icon name="refresh" size={14} style={{ marginRight: 6 }} />
-        취약 개념 위주 퀴즈 생성
+        {generating ? '퀴즈 생성 중...' : '취약 개념 위주 퀴즈 생성'}
       </button>
     </section>
   )
@@ -162,7 +204,7 @@ function UpcomingSubjectCard({ subjects }: { subjects: UpcomingSubject[] }) {
   )
 }
 
-function NoteSummaryCard({ onOpenNote }: { onOpenNote?: (noteId: number) => void }) {
+function NoteSummaryCard({ onOpenNote, onOpenQuiz }: { onOpenNote?: (noteId: number) => void; onOpenQuiz?: (quizId: number) => void }) {
   const { data: notes, loading: notesLoading } = useApi(() => noteApi.getNotes(), [])
   const [selectedNoteId, setSelectedNoteId] = useState<number | null>(null)
   const [summary, setSummary] = useState<Awaited<ReturnType<typeof aiApi.summarizeNote>> | null>(null)
@@ -193,6 +235,7 @@ function NoteSummaryCard({ onOpenNote }: { onOpenNote?: (noteId: number) => void
     try {
       const quiz = await aiApi.generateQuiz(effectiveNoteId)
       setMessage(`AI 퀴즈가 생성되었습니다: ${quiz.title}`)
+      onOpenQuiz?.(quiz.id)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '퀴즈 생성에 실패했습니다.')
     } finally {
@@ -205,11 +248,11 @@ function NoteSummaryCard({ onOpenNote }: { onOpenNote?: (noteId: number) => void
       <div className="surface__title">
         <h2>
           <Icon name="book" size={18} style={{ marginRight: 6 }} />
-          학습 내용 요약 (★AI)
+          학습 내용 요약
         </h2>
         <button type="button" className="surface__title-action" onClick={summarize} disabled={loading || effectiveNoteId === null}>
           <Icon name="refresh" size={14} style={{ marginRight: 6 }} />
-          {loading ? '요약 중...' : '다시 요약'}
+          {loading ? '요약 중...' : '요약하기'}
         </button>
       </div>
       <div className="summary-block">

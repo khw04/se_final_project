@@ -32,26 +32,28 @@ export function StatsScreen() {
 }
 
 function WeeklyChart({ data }: { data: WeeklyStudyPoint[] }) {
-  const max = Math.max(...data.map((d) => d.studyMinutes), 1)
+  const values = data.map((d) => d.studySeconds ?? d.studyMinutes * 60)
+  const max = Math.max(...values, 1)
   const chartH = 120
   const barW = 32
   const gap = 12
   const totalW = data.length * (barW + gap)
 
   return (
-    <section className="surface">
+    <section className="surface stats-weekly-card">
       <div className="surface__title">
         <h2>주간 공부시간</h2>
         <span className="tag">분 단위</span>
       </div>
-      {data.every((d) => d.studyMinutes === 0) ? (
+      {values.every((value) => value === 0) ? (
         <p className="muted-note" style={{ textAlign: 'center', padding: 32 }}>
           아직 기록된 공부시간이 없습니다.
         </p>
       ) : (
-        <svg width="100%" viewBox={`0 0 ${totalW} ${chartH + 32}`} style={{ overflow: 'visible' }}>
+        <svg className="stats-weekly-chart" width="100%" viewBox={`0 0 ${totalW} ${chartH + 32}`}>
           {data.map((d, i) => {
-            const barH = (d.studyMinutes / max) * chartH
+            const seconds = d.studySeconds ?? d.studyMinutes * 60
+            const barH = (seconds / max) * chartH
             const x = i * (barW + gap)
             const y = chartH - barH
             return (
@@ -68,9 +70,9 @@ function WeeklyChart({ data }: { data: WeeklyStudyPoint[] }) {
                 <text x={x + barW / 2} y={chartH + 16} textAnchor="middle" fontSize={12} fill="var(--color-muted)">
                   {d.weekdayLabel}
                 </text>
-                {d.studyMinutes > 0 && (
+                {seconds > 0 && (
                   <text x={x + barW / 2} y={y - 4} textAnchor="middle" fontSize={10} fill="var(--color-muted)">
-                    {d.studyMinutes}
+                    {Math.floor(seconds / 60)}m
                   </text>
                 )}
               </g>

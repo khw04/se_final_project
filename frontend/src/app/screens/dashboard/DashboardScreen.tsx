@@ -1,12 +1,14 @@
 import type { AuthSession } from '../../../lib/authApi'
 
 import { dashboardApi } from '../../api/dashboardApi'
-import { subjectById } from '../../api/subjectApi'
+import { subjectApi, subjectById } from '../../api/subjectApi'
 import { Icon } from '../../components/Icon'
+import type { StudyTimerState } from '../../nav/types'
 import type {
   AccuracyTrendPoint,
   CalendarEvent,
   PriorityRecommendation,
+  Subject,
   SubjectProgress,
   ViewId,
   WeeklyStudyPoint,
@@ -16,11 +18,13 @@ import { useApi } from '../../useApi'
 type Props = {
   session: AuthSession
   onJumpTo: (view: ViewId) => void
+  studyTimer: StudyTimerState
 }
 
-export function DashboardScreen({ session, onJumpTo }: Props) {
+export function DashboardScreen({ session, onJumpTo, studyTimer }: Props) {
   const greeting = session.email.split('@')[0]
   const { data, loading } = useApi(() => dashboardApi.getDashboard(), [])
+  const { data: subjects } = useApi(() => subjectApi.getSubjects(), [])
 
   if (loading || !data) {
     return (
@@ -57,7 +61,8 @@ export function DashboardScreen({ session, onJumpTo }: Props) {
       <DDayStrip events={data.upcomingExams} onJumpTo={onJumpTo} />
 
       <div className="dashboard-grid">
-        <WeeklyStudyCard points={data.weeklyStudy} />
+        <WeeklyStudyCard points={withLiveTodayStudy(data.weeklyStudy, studyTimer)} />
+        <StudyTimerCard subjects={subjects ?? []} timer={studyTimer} />
         <SubjectProgressCard rows={data.subjectProgress} onAll={() => onJumpTo('recommend')} />
         <AiRecommendCard items={data.recommendation} onAll={() => onJumpTo('recommend')} />
         <QuizTrendCard points={data.accuracyTrend} />
@@ -90,6 +95,62 @@ export function DashboardScreen({ session, onJumpTo }: Props) {
   )
 }
 
+function withLiveTodayStudy(points: WeeklyStudyPoint[], timer: StudyTimerState) {
+  const weekday = new Date().getDay()
+  return points.map((point) => point.weekday === weekday
+    ? {
+        ...point,
+        studyMinutes: Math.floor(Math.max(point.studySeconds ?? point.studyMinutes * 60, timer.displayTotalSeconds()) / 60),
+        studySeconds: Math.max(point.studySeconds ?? point.studyMinutes * 60, timer.displayTotalSeconds()),
+      }
+    : point)
+}
+
+function StudyTimerCard({ subjects, timer }: { subjects: Subject[]; timer: StudyTimerState }) {
+  function formatTime(totalSeconds: number) {
+    const hours = Math.floor(totalSeconds / 3600)
+    const minutes = Math.floor((totalSeconds % 3600) / 60)
+    const seconds = totalSeconds % 60
+    return [hours, minutes, seconds].map((part) => String(part).padStart(2, '0')).join(':')
+  }
+
+  const activeSubject = subjects.find((subject) => subject.id === timer.runningSubjectId)
+
+  return (
+    <section className="surface dashboard-card study-timer">
+      <div className="surface__title">
+        <h2>공부 타이머</h2>
+        <span className="tag tag--accent">{activeSubject ? activeSubject.name : '대기 중'}</span>
+      </div>
+      <div className="study-timer__clock">
+        <span>{formatTime(timer.displayTotalSeconds())}</span>
+        <small>오늘 전체 공부시간</small>
+      </div>
+      <div className="study-timer__subjects">
+        {subjects.map((subject) => {
+          const isRunning = timer.runningSubjectId === subject.id
+          const disabled = timer.saving || (timer.runningSubjectId !== null && !isRunning)
+          return (
+            <button
+              key={subject.id}
+              type="button"
+              className={isRunning ? 'is-running' : ''}
+              disabled={disabled}
+              onClick={() => (isRunning ? void timer.stop() : timer.start(subject.id))}
+            >
+              <span className="study-timer__dot" style={{ background: subject.color }} />
+              <span>{subject.name} <em>{formatTime(timer.displaySubjectSeconds(subject.id))}</em></span>
+              <strong>{isRunning ? (timer.saving ? '저장 중' : '정지') : '시작'}</strong>
+            </button>
+          )
+        })}
+      </div>
+      {timer.message ? <p className="muted-note" style={{ margin: '12px 0 0' }}>{timer.message}</p> : null}
+      {subjects.length === 0 ? <p className="muted-note" style={{ margin: 0 }}>과목을 먼저 추가하세요.</p> : null}
+    </section>
+  )
+}
+
 function DDayStrip({ events, onJumpTo }: { events: CalendarEvent[]; onJumpTo: (v: ViewId) => void }) {
   if (events.length === 0) {
     return (
@@ -119,8 +180,9 @@ function DDayStrip({ events, onJumpTo }: { events: CalendarEvent[]; onJumpTo: (v
 }
 
 function WeeklyStudyCard({ points }: { points: WeeklyStudyPoint[] }) {
-  const maxMin = Math.max(360, ...points.map((p) => p.studyMinutes))
-  const totalH = (points.reduce((sum, p) => sum + p.studyMinutes, 0) / 60).toFixed(1)
+  const seconds = points.map((p) => p.studySeconds ?? p.studyMinutes * 60)
+  const maxSeconds = Math.max(360 * 60, ...seconds)
+  const totalH = (seconds.reduce((sum, value) => sum + value, 0) / 3600).toFixed(1)
 
   return (
     <section className="surface dashboard-card">
@@ -132,8 +194,8 @@ function WeeklyStudyCard({ points }: { points: WeeklyStudyPoint[] }) {
         {points.map((p) => (
           <div key={p.weekday} className="bar">
             <div className="bar__track">
-              <div className="bar__fill" style={{ height: `${(p.studyMinutes / maxMin) * 100}%` }}>
-                <span className="bar__label">{(p.studyMinutes / 60).toFixed(1)}h</span>
+              <div className="bar__fill" style={{ height: `${((p.studySeconds ?? p.studyMinutes * 60) / maxSeconds) * 100}%` }}>
+                <span className="bar__label">{((p.studySeconds ?? p.studyMinutes * 60) / 3600).toFixed(1)}h</span>
               </div>
             </div>
             <span className="bar__day">{p.weekdayLabel}</span>

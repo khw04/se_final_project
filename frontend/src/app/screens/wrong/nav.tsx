@@ -7,6 +7,5 @@ export const wrongNavEntry: NavEntry = {
   label: '오답노트',
   section: '학습',
   icon: 'x',
-  badge: 2,
-  render: () => <WrongAnswersScreen />,
+  render: ({ navigate }) => <WrongAnswersScreen onOpenQuiz={(quizId) => navigate('quiz', { quizId })} />,
 }

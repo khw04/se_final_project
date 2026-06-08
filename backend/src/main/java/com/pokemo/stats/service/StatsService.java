@@ -7,7 +7,9 @@ import com.pokemo.quiz.repository.QuizRepository;
 import com.pokemo.stats.api.AccuracyTrendResponse;
 import com.pokemo.stats.api.SubjectProgressResponse;
 import com.pokemo.stats.api.WeeklyStudyResponse;
+import com.pokemo.study.repository.StudySessionRepository;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -23,10 +25,16 @@ public class StatsService {
 
     private final QuizAttemptRepository attemptRepository;
     private final QuizRepository quizRepository;
+    private final StudySessionRepository studySessionRepository;
 
-    public StatsService(QuizAttemptRepository attemptRepository, QuizRepository quizRepository) {
+    public StatsService(
+            QuizAttemptRepository attemptRepository,
+            QuizRepository quizRepository,
+            StudySessionRepository studySessionRepository
+    ) {
         this.attemptRepository = attemptRepository;
         this.quizRepository = quizRepository;
+        this.studySessionRepository = studySessionRepository;
     }
 
     public List<AccuracyTrendResponse> getAccuracyTrend(long userId) {
@@ -69,18 +77,24 @@ public class StatsService {
     }
 
     public List<WeeklyStudyResponse> getWeeklyStudy(long userId) {
-        Map<Integer, Long> minutesByWeekday = attemptRepository
+        Map<Integer, Long> secondsByWeekday = new HashMap<>(attemptRepository
                 .findByUserIdOrderByStartedAtDesc(userId).stream()
                 .filter(a -> a.completedAt() != null)
                 .collect(Collectors.groupingBy(
                         a -> a.startedAt().getDayOfWeek().getValue() % 7,
-                        Collectors.summingLong(a -> Duration.between(a.startedAt(), a.completedAt()).toMinutes())
-                ));
+                        Collectors.summingLong(a -> Duration.between(a.startedAt(), a.completedAt()).toSeconds())
+                )));
+
+        studySessionRepository.findByUserIdOrderByStartedAtDesc(userId).forEach(session -> {
+            int weekday = session.startedAt().getDayOfWeek().getValue() % 7;
+            secondsByWeekday.merge(weekday, (long) session.studySeconds(), Long::sum);
+        });
 
         return IntStream.range(0, 7)
-                .mapToObj(i -> new WeeklyStudyResponse(
-                        i, WEEKDAY_LABELS[i],
-                        minutesByWeekday.getOrDefault(i, 0L).intValue()))
+                .mapToObj(i -> {
+                    int seconds = secondsByWeekday.getOrDefault(i, 0L).intValue();
+                    return new WeeklyStudyResponse(i, WEEKDAY_LABELS[i], seconds / 60, seconds);
+                })
                 .toList();
     }
 }

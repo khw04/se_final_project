@@ -1,3 +1,5 @@
-# 로컬 시크릿/환경 — 절대 커밋 금지 (docker compose가 자동으로 읽음)
+# 로컬 시크릿/환경 - 절대 커밋 금지
 .env
-.env.local
+.env.*
+!.env.example
+!backend/.env.example
