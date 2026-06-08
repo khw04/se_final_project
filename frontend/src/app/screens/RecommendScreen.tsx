@@ -138,14 +138,14 @@ function WeakConceptCard({
         최근 30일 오답에서 추출한 개념 리스트입니다. AI 응답이 없을 때는 오답 빈도만 표시됩니다.
       </p>
       <ul className="weak-list">
-        {concepts.map((concept) => {
-          const subject = subjectById(concept.subjectId)
+        {concepts.map((concept, index) => {
+          const subject = subjectById(concept.subjectId ?? -1)
           return (
-            <li key={`${concept.subjectId}-${concept.concept}`}>
+            <li key={`${concept.subjectId ?? 'unknown'}-${concept.concept}-${index}`}>
               <div>
                 <p className="weak-list__concept">{concept.concept}</p>
                 <p className="weak-list__meta">
-                  {subject?.name} · 관련: {concept.relatedKeywords.join(', ')}
+                  {subject?.name ?? '과목 미분류'} · 관련: {concept.relatedKeywords.join(', ')}
                 </p>
               </div>
               <span className="weak-list__ratio">
