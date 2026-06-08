@@ -54,10 +54,19 @@ public class AuthService {
     UserAccount user = userAccountRepository.findByEmail(email)
         .orElseThrow(() -> new AuthException(HttpStatus.NOT_FOUND, "가입되지 않은 이메일입니다"));
 
-    if (!passwordEncoder.matches(request.password(), user.passwordHash())) {
+    if (user.passwordHash() == null || !passwordEncoder.matches(request.password(), user.passwordHash())) {
       throw new AuthException(HttpStatus.UNAUTHORIZED, "비밀번호가 일치하지 않습니다");
     }
 
+    return issueTokens(user);
+  }
+
+  /**
+   * Access/Refresh 토큰을 발급하고 Refresh 토큰을 저장한다.
+   * 이메일/비밀번호 로그인과 소셜 로그인이 동일한 응답을 만들도록 공유한다.
+   */
+  @Transactional
+  public AuthResponse issueTokens(UserAccount user) {
     String accessToken = jwtTokenService.createAccessToken(user);
     String refreshToken = UUID.randomUUID().toString();
     OffsetDateTime refreshExpiresAt = OffsetDateTime.now().plus(jwtTokenService.refreshTokenTtl());
