@@ -29,11 +29,11 @@ export const calendarApi = {
     if (range?.from) params.set('from', toDateTimeFrom(range.from))
     if (range?.to) params.set('to', toDateTimeTo(range.to))
     const query = params.toString() ? `?${params.toString()}` : ''
-    return apiFetch<CalendarEvent[]>(`/api/events${query}`)
+    return apiFetch<CalendarEvent[]>(`/events${query}`)
   },
 
   async createEvent(req: CreateEventRequest): Promise<CalendarEvent> {
-    return apiFetch<CalendarEvent>('/api/events', {
+    return apiFetch<CalendarEvent>('/events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(req),
@@ -41,7 +41,7 @@ export const calendarApi = {
   },
 
   async deleteEvent(id: number): Promise<void> {
-    await apiFetch(`/api/events/${id}`, { method: 'DELETE' })
+    await apiFetch(`/events/${id}`, { method: 'DELETE' })
   },
 
   today(): string {

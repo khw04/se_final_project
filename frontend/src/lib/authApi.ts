@@ -1,4 +1,4 @@
-const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/+$/, '')
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api').replace(/\/+$/, '')
 
 const authStorageKey = 'pokemo.auth'
 
@@ -92,7 +92,7 @@ export function registerUser(credentials: AuthCredentials) {
     const mock = buildMockSession(credentials.email)
     return Promise.resolve<UserResponse>({ email: mock.email, role: mock.role })
   }
-  return requestJson<UserResponse>('/api/auth/register', {
+  return requestJson<UserResponse>('/auth/register', {
     body: JSON.stringify(credentials),
     headers: {
       'Content-Type': 'application/json',
@@ -105,7 +105,7 @@ export function loginUser(credentials: AuthCredentials) {
   if (mockAuthMode) {
     return Promise.resolve<AuthSession>(buildMockSession(credentials.email))
   }
-  return requestJson<AuthSession>('/api/auth/login', {
+  return requestJson<AuthSession>('/auth/login', {
     body: JSON.stringify(credentials),
     headers: {
       'Content-Type': 'application/json',
@@ -122,7 +122,7 @@ export function getCurrentUser(accessToken: string, tokenType = 'Bearer') {
       role: session?.role ?? 'USER',
     })
   }
-  return requestJson<UserResponse>('/api/auth/me', {
+  return requestJson<UserResponse>('/auth/me', {
     headers: {
       Authorization: `${tokenType} ${accessToken}`,
     },
@@ -134,7 +134,7 @@ export function requestPasswordReset(email: string) {
   if (mockAuthMode) {
     return Promise.resolve<null>(null)
   }
-  return requestJson<null>('/api/auth/password/reset-request', {
+  return requestJson<null>('/auth/password/reset-request', {
     body: JSON.stringify({ email }),
     headers: {
       'Content-Type': 'application/json',
@@ -147,7 +147,7 @@ export function validateResetToken(token: string) {
   if (mockAuthMode) {
     return Promise.resolve<null>(null)
   }
-  return requestJson<null>('/api/auth/password/reset-validate', {
+  return requestJson<null>('/auth/password/reset-validate', {
     body: JSON.stringify({ token }),
     headers: {
       'Content-Type': 'application/json',
@@ -160,7 +160,7 @@ export function confirmPasswordReset(token: string, newPassword: string) {
   if (mockAuthMode) {
     return Promise.resolve<null>(null)
   }
-  return requestJson<null>('/api/auth/password/reset', {
+  return requestJson<null>('/auth/password/reset', {
     body: JSON.stringify({ token, newPassword }),
     headers: {
       'Content-Type': 'application/json',

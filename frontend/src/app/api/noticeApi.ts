@@ -6,15 +6,15 @@ const jsonHeaders = { 'Content-Type': 'application/json' }
 
 export const noticeApi = {
   getNotices(): Promise<Notice[]> {
-    return apiFetch<Notice[]>('/api/notices')
+    return apiFetch<Notice[]>('/notices')
   },
 
   getNotice(id: number): Promise<Notice> {
-    return apiFetch<Notice>(`/api/notices/${id}`)
+    return apiFetch<Notice>(`/notices/${id}`)
   },
 
   createNotice(payload: NoticeDraft): Promise<Notice> {
-    return apiFetch<Notice>('/api/notices', {
+    return apiFetch<Notice>('/notices', {
       method: 'POST',
       headers: jsonHeaders,
       body: JSON.stringify(payload),
@@ -22,7 +22,7 @@ export const noticeApi = {
   },
 
   updateNotice(id: number, payload: NoticeDraft): Promise<Notice> {
-    return apiFetch<Notice>(`/api/notices/${id}`, {
+    return apiFetch<Notice>(`/notices/${id}`, {
       method: 'PUT',
       headers: jsonHeaders,
       body: JSON.stringify(payload),
@@ -30,7 +30,7 @@ export const noticeApi = {
   },
 
   deleteNotice(id: number): Promise<void> {
-    return apiFetch<void>(`/api/notices/${id}`, { method: 'DELETE' })
+    return apiFetch<void>(`/notices/${id}`, { method: 'DELETE' })
   },
 }
 
