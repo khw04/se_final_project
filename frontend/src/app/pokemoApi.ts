@@ -5,6 +5,7 @@ import { noteApi } from './api/noteApi'
 import { noticeApi } from './api/noticeApi'
 import { quizApi } from './api/quizApi'
 import { statsApi } from './api/statsApi'
+import { studyApi } from './api/studyApi'
 import { subjectApi } from './api/subjectApi'
 import { userApi } from './api/userApi'
 
@@ -22,6 +23,7 @@ export const pokemoApi = {
   ...aiApi,
   ...dashboardApi,
   ...statsApi,
+  ...studyApi,
 }
 
 export const subjectById = subjectApi.subjectById

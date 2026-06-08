@@ -29,6 +29,7 @@ export type WeeklyStudyPoint = {
   weekday: number
   weekdayLabel: string
   studyMinutes: number
+  studySeconds?: number
 }
 
 export type SubjectProgress = {
