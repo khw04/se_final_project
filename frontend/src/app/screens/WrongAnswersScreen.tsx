@@ -4,9 +4,11 @@ import { relativeKo } from '../api/calendarApi'
 import { quizApi } from '../api/quizApi'
 import { subjectById } from '../api/subjectApi'
 import { Icon } from '../components/Icon'
+import type { WrongAnswerNote } from '../types'
 import { useApi } from '../useApi'
 
 type Filter = 'all' | 'mcq' | 'short' | 'ox'
+type VisibleWrongAnswer = WrongAnswerNote & { question: NonNullable<WrongAnswerNote['question']> }
 
 export function WrongAnswersScreen({ onOpenQuiz }: { onOpenQuiz?: (quizId: number) => void }) {
   const [filter, setFilter] = useState<Filter>('all')
@@ -45,6 +47,7 @@ export function WrongAnswersScreen({ onOpenQuiz }: { onOpenQuiz?: (quizId: numbe
     repeated: items.filter((i) => i.missCount >= 2).length,
     topConcept: items.slice().sort((a, b) => b.missCount - a.missCount)[0]?.concept ?? '없음',
   }
+  const visibleItems = items.filter((item): item is VisibleWrongAnswer => item.question != null)
 
   return (
     <div className="screen">
@@ -116,23 +119,24 @@ export function WrongAnswersScreen({ onOpenQuiz }: { onOpenQuiz?: (quizId: numbe
           </div>
         </div>
 
-        {items.length === 0 ? (
+        {visibleItems.length === 0 ? (
           <p className="muted-note" style={{ textAlign: 'center', padding: 32 }}>
             해당 유형의 오답이 없습니다.
           </p>
         ) : (
           <ul className="wa-list">
-            {items.map((w) => {
-              const subject = subjectById(w.question.subjectId)
-              const typeLabel = w.question.type === 'mcq' ? '객관식' : w.question.type === 'short' ? '단답형' : 'OX'
+            {visibleItems.map((w) => {
+              const question = w.question
+              const subject = subjectById(question.subjectId)
+              const typeLabel = question.type === 'mcq' ? '객관식' : question.type === 'short' ? '단답형' : 'OX'
               return (
                 <li key={w.questionId} className={w.missCount >= 2 ? 'is-repeat' : ''}>
                   <div className="wa-list__meta">
                     <span className="tag">{subject?.name}</span>
-                    <span className={`tag tag--${w.question.type === 'ox' ? 'warning' : 'accent'}`}>{typeLabel}</span>
+                    <span className={`tag tag--${question.type === 'ox' ? 'warning' : 'accent'}`}>{typeLabel}</span>
                     {w.missCount >= 2 ? <span className="tag tag--warning">{w.missCount}회 오답</span> : null}
                   </div>
-                  <p className="wa-list__q">{w.question.text}</p>
+                  <p className="wa-list__q">{question.text}</p>
                   <p className="wa-list__sub">
                     관련 개념: <strong>{w.concept}</strong> · 최근 시도: {relativeKo(w.lastMissedAt)}
                   </p>
@@ -151,7 +155,7 @@ export function WrongAnswersScreen({ onOpenQuiz }: { onOpenQuiz?: (quizId: numbe
                   {openExplanations[w.questionId] ? (
                     <div className="wa-list__explanation">
                       <p className="label">해설</p>
-                      <p>{w.question.explanation}</p>
+                      <p>{question.explanation}</p>
                     </div>
                   ) : null}
                 </li>

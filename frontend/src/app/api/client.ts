@@ -2,6 +2,14 @@ export const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhos
 
 const authStorageKey = 'pokemo.auth'
 
+type StoredSession = {
+  accessToken: string
+  refreshToken: string
+  tokenType: string
+  email: string
+  role: string
+}
+
 export class ApiError extends Error {
   status: number
   body: unknown
@@ -45,7 +53,7 @@ function getErrorMessage(body: unknown, status: number) {
   return `Request failed with status ${status}`
 }
 
-function readAccessToken() {
+function readSession() {
   try {
     const storedSession = window.localStorage.getItem(authStorageKey)
 
@@ -59,12 +67,32 @@ function readAccessToken() {
       return null
     }
 
-    const accessToken = (session as Record<string, unknown>).accessToken
+    const candidate = session as Record<string, unknown>
 
-    return typeof accessToken === 'string' && accessToken ? accessToken : null
+    if (
+      typeof candidate.accessToken !== 'string' ||
+      typeof candidate.refreshToken !== 'string' ||
+      typeof candidate.tokenType !== 'string' ||
+      typeof candidate.email !== 'string' ||
+      typeof candidate.role !== 'string'
+    ) {
+      return null
+    }
+
+    return candidate as StoredSession
   } catch {
     return null
   }
+}
+
+function saveSession(session: StoredSession) {
+  window.localStorage.setItem(authStorageKey, JSON.stringify(session))
+  window.dispatchEvent(new Event('storage'))
+}
+
+function clearSession() {
+  window.localStorage.removeItem(authStorageKey)
+  window.dispatchEvent(new Event('storage'))
 }
 
 function buildUrl(path: string) {
@@ -77,16 +105,29 @@ function buildUrl(path: string) {
 
 export async function apiFetch<TResponse = unknown>(path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers)
-  const accessToken = readAccessToken()
+  const session = readSession()
 
-  if (accessToken && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${accessToken}`)
+  if (session?.accessToken && !headers.has('Authorization')) {
+    headers.set('Authorization', `${session.tokenType || 'Bearer'} ${session.accessToken}`)
   }
 
-  const response = await fetch(buildUrl(path), {
+  let response = await fetch(buildUrl(path), {
     ...init,
     headers,
   })
+
+  if (response.status === 401 && session?.refreshToken && path !== '/auth/refresh') {
+    const refreshed = await refreshSession(session)
+    if (refreshed) {
+      const retryHeaders = new Headers(init.headers)
+      retryHeaders.set('Authorization', `${refreshed.tokenType || 'Bearer'} ${refreshed.accessToken}`)
+      response = await fetch(buildUrl(path), {
+        ...init,
+        headers: retryHeaders,
+      })
+    }
+  }
+
   const body = await parseResponseBody(response)
 
   if (!response.ok) {
@@ -94,4 +135,40 @@ export async function apiFetch<TResponse = unknown>(path: string, init: RequestI
   }
 
   return body as TResponse
+}
+
+async function refreshSession(session: StoredSession) {
+  const response = await fetch(buildUrl('/auth/refresh'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ refreshToken: session.refreshToken }),
+  })
+  const body = await parseResponseBody(response)
+
+  if (!response.ok || !body || typeof body !== 'object') {
+    clearSession()
+    return null
+  }
+
+  const payload = body as Record<string, unknown>
+  if (
+    typeof payload.accessToken !== 'string' ||
+    typeof payload.refreshToken !== 'string' ||
+    typeof payload.tokenType !== 'string'
+  ) {
+    clearSession()
+    return null
+  }
+
+  const refreshed: StoredSession = {
+    accessToken: payload.accessToken,
+    refreshToken: payload.refreshToken,
+    tokenType: payload.tokenType,
+    email: typeof payload.email === 'string' ? payload.email : session.email,
+    role: typeof payload.role === 'string' ? payload.role : session.role,
+  }
+  saveSession(refreshed)
+  return refreshed
 }

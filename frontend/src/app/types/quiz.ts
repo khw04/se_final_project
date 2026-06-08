@@ -34,7 +34,7 @@ export type Answer = {
 
 export type WrongAnswerNote = {
   questionId: number
-  question: Question
+  question: Question | null
   missCount: number
   lastAttemptId: number
   lastMissedAt: string

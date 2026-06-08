@@ -45,7 +45,7 @@ export function DashboardScreen({ session, onJumpTo, studyTimer }: Props) {
     )
   }
 
-  const latest = data.accuracyTrend[data.accuracyTrend.length - 1]
+  const latest = data.accuracyTrend[0]
 
   return (
     <div className="screen">
@@ -270,7 +270,8 @@ function AiRecommendCard({ items, onAll }: { items: PriorityRecommendation[]; on
 
 function QuizTrendCard({ points }: { points: AccuracyTrendPoint[] }) {
   if (points.length === 0) return null
-  const values = points.map((p) => p.accuracy)
+  const chronologicalPoints = points.slice().reverse()
+  const values = chronologicalPoints.map((p) => p.accuracy)
   const max = Math.max(...values, 90)
   const min = Math.min(...values, 50)
   const w = 320
@@ -281,7 +282,7 @@ function QuizTrendCard({ points }: { points: AccuracyTrendPoint[] }) {
   const linePath = values.map((v, i) => `${i === 0 ? 'M' : 'L'} ${pad + i * stepX} ${yFor(v)}`).join(' ')
   const areaPath = `${linePath} L ${pad + (values.length - 1) * stepX} ${h - pad} L ${pad} ${h - pad} Z`
 
-  const latest = values[values.length - 1]
+  const latest = points[0]?.accuracy ?? 0
   const avg = Math.round(values.reduce((sum, v) => sum + v, 0) / values.length)
   const best = Math.max(...values)
 
@@ -296,7 +297,7 @@ function QuizTrendCard({ points }: { points: AccuracyTrendPoint[] }) {
         <path d={linePath} fill="none" stroke="var(--color-accent)" strokeWidth={2.4} strokeLinejoin="round" />
         {values.map((v, i) => (
           <circle
-            key={points[i]?.attemptedAt ?? v}
+            key={chronologicalPoints[i]?.attemptedAt ?? v}
             cx={pad + i * stepX}
             cy={yFor(v)}
             r={i === values.length - 1 ? 4 : 2.5}

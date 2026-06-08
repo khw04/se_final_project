@@ -3,7 +3,7 @@ import type { UserAccount } from './common'
 
 export type WeakConcept = {
   concept: string
-  subjectId: number
+  subjectId: number | null
   missCount: number
   totalAttempts: number
   relatedKeywords: string[]

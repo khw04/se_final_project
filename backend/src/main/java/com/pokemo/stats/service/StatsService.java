@@ -2,6 +2,7 @@ package com.pokemo.stats.service;
 
 import com.pokemo.quiz.domain.Quiz;
 import com.pokemo.quiz.domain.QuizAttempt;
+import com.pokemo.quiz.repository.QuestionRepository;
 import com.pokemo.quiz.repository.QuizAttemptRepository;
 import com.pokemo.quiz.repository.QuizRepository;
 import com.pokemo.stats.api.AccuracyTrendResponse;
@@ -25,15 +26,18 @@ public class StatsService {
 
     private final QuizAttemptRepository attemptRepository;
     private final QuizRepository quizRepository;
+    private final QuestionRepository questionRepository;
     private final StudySessionRepository studySessionRepository;
 
     public StatsService(
             QuizAttemptRepository attemptRepository,
             QuizRepository quizRepository,
+            QuestionRepository questionRepository,
             StudySessionRepository studySessionRepository
     ) {
         this.attemptRepository = attemptRepository;
         this.quizRepository = quizRepository;
+        this.questionRepository = questionRepository;
         this.studySessionRepository = studySessionRepository;
     }
 
@@ -52,7 +56,7 @@ public class StatsService {
                 .findAllById(attempts.stream().map(QuizAttempt::quizId).distinct().toList())
                 .stream().collect(Collectors.toMap(Quiz::id, q -> q));
 
-        record SubjectStat(int total, int correct) {}
+        record SubjectStat(int attempted, int correct) {}
 
         Map<Long, SubjectStat> statBySubject = attempts.stream()
                 .filter(a -> quizMap.containsKey(a.quizId()))
@@ -67,11 +71,18 @@ public class StatsService {
                         )
                 ));
 
+        Map<Long, Integer> totalBySubject = questionRepository.findByCreatedBy(userId).stream()
+                .collect(Collectors.groupingBy(
+                        q -> q.subjectId(),
+                        Collectors.collectingAndThen(Collectors.counting(), Long::intValue)
+                ));
+
         return statBySubject.entrySet().stream()
                 .map(e -> {
                     SubjectStat s = e.getValue();
-                    int accuracy = s.total() > 0 ? (int) Math.round((double) s.correct() / s.total() * 100) : 0;
-                    return new SubjectProgressResponse(e.getKey(), accuracy, s.total(), s.total());
+                    int accuracy = s.attempted() > 0 ? (int) Math.round((double) s.correct() / s.attempted() * 100) : 0;
+                    int total = Math.max(s.attempted(), totalBySubject.getOrDefault(e.getKey(), s.attempted()));
+                    return new SubjectProgressResponse(e.getKey(), accuracy, s.attempted(), total);
                 })
                 .toList();
     }

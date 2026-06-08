@@ -24,7 +24,6 @@ export function QuizScreen({ quizId }: { quizId?: number }) {
   )
 
   const [type, setType] = useState<QuestionType>('mcq')
-  const [step, setStep] = useState<number>(0)
   const [picked, setPicked] = useState<Picked>(null)
   const [revealed, setRevealed] = useState<boolean>(false)
   const [answers, setAnswers] = useState<Answer[]>([])
@@ -40,7 +39,6 @@ export function QuizScreen({ quizId }: { quizId?: number }) {
   useEffect(() => {
     queueMicrotask(() => {
       setType('mcq')
-      setStep(0)
       setPicked(null)
       setRevealed(false)
       setAnswers([])
@@ -110,10 +108,11 @@ export function QuizScreen({ quizId }: { quizId?: number }) {
   }
 
   const filtered = quiz.questions.filter((q) => q.type === type)
+  const answeredQuestionIds = new Set(answers.map((answer) => answer.questionId))
   const total = quiz.questions.length
-  const current = filtered[step % Math.max(filtered.length, 1)] ?? null
+  const current = filtered.find((question) => !answeredQuestionIds.has(question.id)) ?? null
   const subject = subjectById(quiz.subjectId)
-  const allAnswered = answers.length >= total
+  const allAnswered = answeredQuestionIds.size >= total
 
   function isCorrect(q: Question, value: Picked): boolean {
     if (q.type === 'mcq') return value === q.correctIndex
@@ -124,6 +123,7 @@ export function QuizScreen({ quizId }: { quizId?: number }) {
 
   function submit() {
     if (picked == null || !current) return
+    if (answeredQuestionIds.has(current.id)) return
     setAnswers((prev) => [
       ...prev,
       {
@@ -139,12 +139,10 @@ export function QuizScreen({ quizId }: { quizId?: number }) {
   function next() {
     setRevealed(false)
     setPicked(null)
-    setStep((s) => s + 1)
   }
 
   function changeType(t: QuestionType) {
     setType(t)
-    setStep(0)
     setPicked(null)
     setRevealed(false)
   }
@@ -168,7 +166,7 @@ export function QuizScreen({ quizId }: { quizId?: number }) {
     }
   }
 
-  const stepDisplay = answers.length + 1
+  const stepDisplay = Math.min(answeredQuestionIds.size + 1, total)
   const score = answers.filter((a) => a.correct).length
   const wrongCount = answers.filter((a) => !a.correct).length
 

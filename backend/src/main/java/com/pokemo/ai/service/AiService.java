@@ -16,9 +16,11 @@ import com.pokemo.quiz.api.QuestionRequest;
 import com.pokemo.quiz.api.QuizRequest;
 import com.pokemo.quiz.api.QuizResponse;
 import com.pokemo.quiz.domain.Difficulty;
+import com.pokemo.quiz.domain.Question;
 import com.pokemo.quiz.domain.Quiz;
 import com.pokemo.quiz.domain.QuestionType;
 import com.pokemo.quiz.domain.WrongAnswerNote;
+import com.pokemo.quiz.repository.QuestionRepository;
 import com.pokemo.quiz.repository.QuizAttemptRepository;
 import com.pokemo.quiz.repository.QuizRepository;
 import com.pokemo.quiz.repository.WrongAnswerNoteRepository;
@@ -29,6 +31,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +45,7 @@ public class AiService {
   private final NoteRepository noteRepository;
   private final QuizService quizService;
   private final QuizRepository quizRepository;
+  private final QuestionRepository questionRepository;
   private final WrongAnswerNoteRepository wrongAnswerNoteRepository;
   private final CalendarEventRepository calendarEventRepository;
   private final QuizAttemptRepository quizAttemptRepository;
@@ -51,6 +56,7 @@ public class AiService {
       NoteRepository noteRepository,
       QuizService quizService,
       QuizRepository quizRepository,
+      QuestionRepository questionRepository,
       WrongAnswerNoteRepository wrongAnswerNoteRepository,
       CalendarEventRepository calendarEventRepository,
       QuizAttemptRepository quizAttemptRepository
@@ -60,6 +66,7 @@ public class AiService {
     this.noteRepository = noteRepository;
     this.quizService = quizService;
     this.quizRepository = quizRepository;
+    this.questionRepository = questionRepository;
     this.wrongAnswerNoteRepository = wrongAnswerNoteRepository;
     this.calendarEventRepository = calendarEventRepository;
     this.quizAttemptRepository = quizAttemptRepository;
@@ -207,11 +214,17 @@ public class AiService {
   }
 
   private List<WeakConceptResponse> weakConcepts(long userId) {
-    return wrongAnswerNoteRepository.findByUserIdOrderByMissCountDesc(userId).stream()
+    List<WrongAnswerNote> notes = wrongAnswerNoteRepository.findByUserIdOrderByMissCountDesc(userId).stream()
         .limit(5)
+        .toList();
+    Map<Long, Long> subjectByQuestionId = questionRepository.findAllById(
+            notes.stream().map(WrongAnswerNote::questionId).toList()
+        ).stream()
+        .collect(Collectors.toMap(Question::id, Question::subjectId));
+    return notes.stream()
         .map(note -> new WeakConceptResponse(
             note.concept() == null || note.concept().isBlank() ? "취약 유형" : note.concept(),
-            null,
+            subjectByQuestionId.get(note.questionId()),
             note.missCount(),
             Math.max(note.missCount(), 1),
             List.of("오답 복습", "개념 정리")))
