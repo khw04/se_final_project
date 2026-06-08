@@ -27,6 +27,7 @@ export function CalendarScreen() {
   const [formType, setFormType] = useState('other')
   const [formSubjectId, setFormSubjectId] = useState<string>('')
   const [submitting, setSubmitting] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   const daysInMonth = new Date(year, month, 0).getDate()
   const firstWeekday = (new Date(year, month - 1, 1).getDay() + 6) % 7
@@ -69,6 +70,18 @@ export function CalendarScreen() {
       refetch()
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function handleDeleteEvent(event: CalendarEvent) {
+    const ok = window.confirm(`'${event.title}' 일정을 삭제할까요?`)
+    if (!ok) return
+    setDeletingId(event.id)
+    try {
+      await calendarApi.deleteEvent(event.id)
+      refetch()
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -293,6 +306,15 @@ export function CalendarScreen() {
                         ) : null}
                       </p>
                     </div>
+                    <button
+                      type="button"
+                      className="row-icon upcoming-list__delete"
+                      aria-label={`${event.title} 삭제`}
+                      disabled={deletingId === event.id}
+                      onClick={() => handleDeleteEvent(event)}
+                    >
+                      <Icon name="x" size={14} />
+                    </button>
                   </li>
                 )
               })}
