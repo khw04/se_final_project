@@ -220,3 +220,119 @@ export function formatAuthError(error: unknown) {
 
   return 'Something went wrong. Please try again.'
 }
+
+export type OAuthProvider = 'google' | 'kakao'
+
+const oauthStateKey = 'pokemo.oauth'
+
+const oauthClientIds: Record<OAuthProvider, string> = {
+  google: import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '',
+  kakao: import.meta.env.VITE_KAKAO_CLIENT_ID ?? '',
+}
+
+function oauthRedirectUri() {
+  return import.meta.env.VITE_OAUTH_REDIRECT_URI ?? window.location.origin
+}
+
+function randomState() {
+  const bytes = new Uint8Array(16)
+  window.crypto.getRandomValues(bytes)
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+function buildAuthorizeUrl(provider: OAuthProvider, state: string, redirectUri: string) {
+  if (provider === 'google') {
+    const params = new URLSearchParams({
+      client_id: oauthClientIds.google,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'openid email profile',
+      state,
+      prompt: 'select_account',
+    })
+    return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
+  }
+
+  const params = new URLSearchParams({
+    client_id: oauthClientIds.kakao,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: 'profile_nickname',
+    state,
+  })
+  return `https://kauth.kakao.com/oauth/authorize?${params.toString()}`
+}
+
+export function startOAuthLogin(provider: OAuthProvider) {
+  const state = randomState()
+  window.sessionStorage.setItem(oauthStateKey, JSON.stringify({ provider, state }))
+  window.location.assign(buildAuthorizeUrl(provider, state, oauthRedirectUri()))
+}
+
+type OAuthLoginResponse = {
+  email: string
+  role: string
+  accessToken: string
+  refreshToken: string
+  tokenType: string
+}
+
+export function loginWithOAuth(provider: OAuthProvider, code: string, redirectUri: string) {
+  return requestJson<OAuthLoginResponse>(`/auth/oauth/${provider}`, {
+    body: JSON.stringify({ code, redirectUri }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  }).then(
+    (response): AuthSession => ({
+      accessToken: response.accessToken,
+      refreshToken: response.refreshToken,
+      tokenType: response.tokenType || 'Bearer',
+      email: response.email,
+      role: response.role,
+    }),
+  )
+}
+
+export type OAuthCallback = {
+  provider: OAuthProvider
+  code: string
+  redirectUri: string
+}
+
+export function consumeOAuthRedirect(): OAuthCallback | null {
+  const params = new URLSearchParams(window.location.search)
+  const code = params.get('code')
+  const state = params.get('state')
+
+  if (!code || !state) {
+    return null
+  }
+
+  const stored = window.sessionStorage.getItem(oauthStateKey)
+  window.sessionStorage.removeItem(oauthStateKey)
+
+  if (!stored) {
+    return null
+  }
+
+  let parsed: { provider?: OAuthProvider; state?: string }
+  try {
+    parsed = JSON.parse(stored) as { provider?: OAuthProvider; state?: string }
+  } catch {
+    return null
+  }
+
+  if (!parsed.provider || parsed.state !== state) {
+    return null
+  }
+
+  return { provider: parsed.provider, code, redirectUri: oauthRedirectUri() }
+}
+
+export function clearOAuthQueryParams() {
+  const url = new URL(window.location.href)
+  url.search = ''
+  window.history.replaceState({}, document.title, url.toString())
+}

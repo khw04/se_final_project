@@ -24,7 +24,7 @@ public class UserAccount {
   @Column(nullable = false, length = 320)
   private String email;
 
-  @Column(nullable = false, length = 100)
+  @Column(length = 100)
   private String passwordHash;
 
   @Enumerated(EnumType.STRING)
@@ -46,6 +46,20 @@ public class UserAccount {
     this.role = role;
     this.emailVerified = false;
     this.createdAt = OffsetDateTime.now();
+  }
+
+  /**
+   * 소셜 로그인 전용 계정 생성 팩토리. 비밀번호 없이 가입되며,
+   * provider가 이메일 검증을 보장한 경우에만 emailVerified를 true로 둔다.
+   */
+  public static UserAccount oauthUser(String email, UserRole role, boolean emailVerified) {
+    UserAccount user = new UserAccount();
+    user.email = email;
+    user.passwordHash = null;
+    user.role = role;
+    user.emailVerified = emailVerified;
+    user.createdAt = OffsetDateTime.now();
+    return user;
   }
 
   public Long id() {

@@ -399,3 +399,62 @@
     inset: auto var(--space-5) var(--space-5) auto;
   }
 }
+
+.auth-card__social {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+.auth-card__social-divider {
+  align-items: center;
+  color: var(--color-muted);
+  display: flex;
+  font-size: var(--font-size-1);
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.auth-card__social-divider::before,
+.auth-card__social-divider::after {
+  background: var(--color-line);
+  content: '';
+  flex: 1;
+  height: var(--border-width-1);
+}
+
+.auth-card__social-button {
+  border: var(--border-width-1) solid var(--color-line);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  font-weight: var(--font-weight-bold);
+  padding: var(--space-3) var(--space-5);
+  transition:
+    background var(--duration-fast) ease,
+    transform var(--duration-fast) ease;
+}
+
+.auth-card__social-button:hover:not(:disabled) {
+  transform: translateY(calc(var(--space-half) * -1));
+}
+
+.auth-card__social-button:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.auth-card__social-button:focus-visible {
+  outline: var(--border-width-2) solid var(--color-accent);
+  outline-offset: var(--space-1);
+}
+
+.auth-card__social-button--google {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.auth-card__social-button--kakao {
+  background: #fee500;
+  border-color: #fee500;
+  color: #191600;
+}

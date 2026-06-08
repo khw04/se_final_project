@@ -4,12 +4,16 @@ import type { AuthSession, UserResponse } from '../lib/authApi'
 
 import {
   clearAuthSession,
+  clearOAuthQueryParams,
+  consumeOAuthRedirect,
   formatAuthError,
   getCurrentUser,
   loadAuthSession,
   loginUser,
+  loginWithOAuth,
   registerUser,
   saveAuthSession,
+  startOAuthLogin,
 } from '../lib/authApi'
 
 type AuthMode = 'login' | 'register'
@@ -84,6 +88,53 @@ export function AuthCard() {
       isMounted = false
     }
   }, [session])
+
+  useEffect(() => {
+    const callback = consumeOAuthRedirect()
+
+    if (!callback) {
+      return
+    }
+
+    let isMounted = true
+    clearOAuthQueryParams()
+
+    Promise.resolve().then(() => {
+      if (isMounted) {
+        setIsSubmitting(true)
+        setMessage({ tone: 'muted', text: '소셜 로그인을 처리하는 중입니다...' })
+      }
+    })
+
+    loginWithOAuth(callback.provider, callback.code, callback.redirectUri)
+      .then((nextSession) => {
+        if (!isMounted) {
+          return
+        }
+
+        saveAuthSession(nextSession)
+        setSession(nextSession)
+        setCurrentUser({ email: nextSession.email, role: nextSession.role })
+        setMessage({ tone: 'success', text: '소셜 로그인되었습니다. 프로필을 확인하는 중입니다.' })
+        window.dispatchEvent(new Event('storage'))
+      })
+      .catch((error: unknown) => {
+        if (!isMounted) {
+          return
+        }
+
+        setMessage({ tone: 'error', text: `소셜 로그인에 실패했습니다: ${formatAuthError(error)}` })
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsSubmitting(false)
+        }
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   function switchMode(nextMode: AuthMode) {
     setMode(nextMode)
@@ -199,6 +250,28 @@ export function AuthCard() {
               {submitLabel}
             </button>
           </form>
+
+          <div className="auth-card__social">
+            <p className="auth-card__social-divider">
+              <span>또는 소셜 계정으로</span>
+            </p>
+            <button
+              className="auth-card__social-button auth-card__social-button--google"
+              disabled={isSubmitting}
+              onClick={() => startOAuthLogin('google')}
+              type="button"
+            >
+              구글로 로그인
+            </button>
+            <button
+              className="auth-card__social-button auth-card__social-button--kakao"
+              disabled={isSubmitting}
+              onClick={() => startOAuthLogin('kakao')}
+              type="button"
+            >
+              카카오로 로그인
+            </button>
+          </div>
         </>
       )}
 
