@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react'
 import type { AuthSession } from '../../lib/authApi'
 
+import { quizApi } from '../api/quizApi'
 import { navSections } from '../nav/registry'
 
 import { Icon } from './Icon'
@@ -12,6 +14,26 @@ type SidebarProps = {
 }
 
 export function Sidebar({ session, activeView, onSelect, onLogout }: SidebarProps) {
+  const [wrongCount, setWrongCount] = useState(0)
+
+  useEffect(() => {
+    let alive = true
+    const refresh = () => quizApi
+      .getWrongAnswers()
+      .then((items) => {
+        if (alive) setWrongCount(items.length)
+      })
+      .catch(() => {
+        if (alive) setWrongCount(0)
+      })
+    refresh()
+    window.addEventListener('pokemo:wrong-answers-updated', refresh)
+    return () => {
+      alive = false
+      window.removeEventListener('pokemo:wrong-answers-updated', refresh)
+    }
+  }, [session.email])
+
   return (
     <aside className="sidebar" aria-label="Workspace navigation">
       <div className="sidebar__user">
@@ -32,7 +54,8 @@ export function Sidebar({ session, activeView, onSelect, onLogout }: SidebarProp
               >
                 <Icon name={item.icon} size={18} />
                 <span>{item.label}</span>
-                {item.badge ? <span className="sidebar__nav-badge">{item.badge}</span> : null}
+                {item.id === 'wrong' && wrongCount > 0 ? <span className="sidebar__nav-badge">{wrongCount}</span> : null}
+                {item.id !== 'wrong' && item.badge ? <span className="sidebar__nav-badge">{item.badge}</span> : null}
               </button>
             ))}
           </nav>

@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
+import { aiApi } from '../api/aiApi'
+import { noteApi } from '../api/noteApi'
 import { quizApi } from '../api/quizApi'
 import { subjectById } from '../api/subjectApi'
 import { Icon } from '../components/Icon'
@@ -8,16 +10,18 @@ import { useApi } from '../useApi'
 
 type Picked = string | number | boolean | null
 
-export function QuizScreen() {
-  const { data: quizList, loading: listLoading } = useApi(() => quizApi.listQuizzes(), [])
+export function QuizScreen({ quizId }: { quizId?: number }) {
+  const { data: quizList, loading: listLoading, refetch: refetchQuizList } = useApi(() => quizApi.listQuizzes(), [])
+  const [activeQuizId, setActiveQuizId] = useState<number | null>(quizId ?? null)
+  const [generating, setGenerating] = useState(false)
+  const [message, setMessage] = useState('')
   const firstQuizId = quizList?.[0]?.id ?? null
+  const effectiveQuizId = activeQuizId ?? firstQuizId
 
   const { data: quiz, loading: quizLoading } = useApi(
-    () => (firstQuizId != null ? quizApi.getQuiz(firstQuizId) : Promise.resolve(null)),
-    [firstQuizId],
+    () => (effectiveQuizId != null ? quizApi.getQuiz(effectiveQuizId) : Promise.resolve(null)),
+    [effectiveQuizId],
   )
-
-  const loading = listLoading || (firstQuizId != null && quizLoading)
 
   const [type, setType] = useState<QuestionType>('mcq')
   const [step, setStep] = useState<number>(0)
@@ -26,6 +30,53 @@ export function QuizScreen() {
   const [answers, setAnswers] = useState<Answer[]>([])
   const [submitLoading, setSubmitLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+
+  useEffect(() => {
+    if (quizId != null) {
+      queueMicrotask(() => setActiveQuizId(quizId))
+    }
+  }, [quizId])
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setType('mcq')
+      setStep(0)
+      setPicked(null)
+      setRevealed(false)
+      setAnswers([])
+      setSubmitted(false)
+    })
+  }, [effectiveQuizId])
+
+  useEffect(() => {
+    const firstType = quiz?.questions?.[0]?.type
+    if (firstType) {
+      queueMicrotask(() => setType(firstType))
+    }
+  }, [quiz?.id, quiz?.questions])
+
+  async function generateNewQuiz() {
+    setGenerating(true)
+    setMessage('')
+    try {
+      const notes = await noteApi.getNotes()
+      const noteId = quiz?.generatedFromNoteId ?? notes[0]?.id
+      if (noteId == null) {
+        setMessage('퀴즈를 만들 노트가 없습니다. 먼저 노트를 작성해주세요.')
+        return
+      }
+      const nextQuiz = await aiApi.generateQuiz(noteId)
+      setActiveQuizId(nextQuiz.id)
+      refetchQuizList()
+      setMessage(`새 퀴즈를 생성했습니다: ${nextQuiz.title}`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '새 퀴즈 생성에 실패했습니다.')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const loading = listLoading || (effectiveQuizId != null && quizLoading)
 
   if (loading) {
     return (
@@ -46,6 +97,13 @@ export function QuizScreen() {
           <p className="eyebrow">퀴즈</p>
           <h1 className="screen__heading">퀴즈 없음</h1>
           <p className="screen__lede">아직 생성된 퀴즈가 없습니다. AI 퀴즈 생성 기능으로 노트 기반 퀴즈를 만들어보세요.</p>
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <button type="button" className="surface__title-action" onClick={() => void generateNewQuiz()} disabled={generating}>
+              <Icon name="sparkle" size={14} style={{ marginRight: 6 }} />
+              {generating ? '퀴즈 생성 중...' : '새 퀴즈 생성'}
+            </button>
+          </div>
+          {message ? <p className="muted-note" style={{ marginTop: 12 }}>{message}</p> : null}
         </header>
       </div>
     )
@@ -103,6 +161,7 @@ export function QuizScreen() {
           timeSpentSec: a.timeSpentSec,
         })),
       )
+      window.dispatchEvent(new Event('pokemo:wrong-answers-updated'))
       setSubmitted(true)
     } finally {
       setSubmitLoading(false)
@@ -126,10 +185,12 @@ export function QuizScreen() {
           문제입니다. 풀이를 마치면 오답이 자동으로 오답노트로 이동합니다.
         </p>
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-          <button type="button" className="surface__title-action">
-            <Icon name="sparkle" size={14} style={{ marginRight: 6 }} />새 퀴즈 생성
+          <button type="button" className="surface__title-action" onClick={() => void generateNewQuiz()} disabled={generating}>
+            <Icon name="sparkle" size={14} style={{ marginRight: 6 }} />
+            {generating ? '퀴즈 생성 중...' : '새 퀴즈 생성'}
           </button>
         </div>
+        {message ? <p className="muted-note" style={{ marginTop: 12 }}>{message}</p> : null}
       </header>
 
       <div className="quiz-layout">

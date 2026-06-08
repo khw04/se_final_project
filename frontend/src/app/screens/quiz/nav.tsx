@@ -7,5 +7,5 @@ export const quizNavEntry: NavEntry = {
   label: '퀴즈',
   section: '학습',
   icon: 'brain',
-  render: () => <QuizScreen />,
+  render: ({ options }) => <QuizScreen quizId={options?.quizId} />,
 }

@@ -6,7 +6,9 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Component
@@ -51,6 +53,11 @@ public class GeminiAiClient implements AiClient {
       return text.asText();
     } catch (AiClientException exception) {
       throw exception;
+    } catch (RestClientResponseException exception) {
+      throw new AiClientException("Gemini 호출에 실패했습니다. status="
+          + exception.getStatusCode().value() + ", body=" + exception.getResponseBodyAsString(), exception);
+    } catch (ResourceAccessException exception) {
+      throw new AiClientException("Gemini 호출 시간이 초과되었습니다.", exception);
     } catch (Exception exception) {
       throw new AiClientException("Gemini 호출에 실패했습니다.", exception);
     }

@@ -8,9 +8,25 @@ import { useApi } from '../useApi'
 
 type Filter = 'all' | 'mcq' | 'short' | 'ox'
 
-export function WrongAnswersScreen() {
+export function WrongAnswersScreen({ onOpenQuiz }: { onOpenQuiz?: (quizId: number) => void }) {
   const [filter, setFilter] = useState<Filter>('all')
   const { data: items, loading } = useApi(() => quizApi.getWrongAnswers({ type: filter }), [filter])
+  const [openExplanations, setOpenExplanations] = useState<Record<number, boolean>>({})
+  const [retrying, setRetrying] = useState(false)
+  const [message, setMessage] = useState('')
+
+  async function retryWeakQuiz() {
+    setRetrying(true)
+    setMessage('')
+    try {
+      const quiz = await quizApi.retryWeakTypes()
+      onOpenQuiz?.(quiz.id)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '재시험 퀴즈 생성에 실패했습니다.')
+    } finally {
+      setRetrying(false)
+    }
+  }
 
   if (loading || !items) {
     return (
@@ -63,17 +79,17 @@ export function WrongAnswersScreen() {
         <button
           type="button"
           className="surface wa-cta"
-          onClick={() => {
-            void quizApi.retryWeakTypes().catch(() => null)
-          }}
+          onClick={() => void retryWeakQuiz()}
+          disabled={retrying || summary.repeated === 0}
         >
           <Icon name="refresh" size={18} />
           <span>
             <strong>취약 유형 재시험</strong>
-            <em>반복 오답 {summary.repeated}문제로 자동 출제</em>
+            <em>{retrying ? '재시험 생성 중...' : `반복 오답 ${summary.repeated}문제로 자동 출제`}</em>
           </span>
         </button>
       </div>
+      {message ? <p className="muted-note" style={{ marginTop: -8 }}>{message}</p> : null}
 
       <section className="surface">
         <div className="surface__title">
@@ -121,13 +137,23 @@ export function WrongAnswersScreen() {
                     관련 개념: <strong>{w.concept}</strong> · 최근 시도: {relativeKo(w.lastMissedAt)}
                   </p>
                   <div className="wa-list__actions">
-                    <button type="button" className="surface__title-action">
+                    <button type="button" className="surface__title-action" onClick={() => void retryWeakQuiz()} disabled={retrying}>
                       다시 풀기
                     </button>
-                    <button type="button" className="surface__title-action">
-                      해설 보기
+                    <button
+                      type="button"
+                      className="surface__title-action"
+                      onClick={() => setOpenExplanations((prev) => ({ ...prev, [w.questionId]: !prev[w.questionId] }))}
+                    >
+                      {openExplanations[w.questionId] ? '해설 닫기' : '해설 보기'}
                     </button>
                   </div>
+                  {openExplanations[w.questionId] ? (
+                    <div className="wa-list__explanation">
+                      <p className="label">해설</p>
+                      <p>{w.question.explanation}</p>
+                    </div>
+                  ) : null}
                 </li>
               )
             })}
