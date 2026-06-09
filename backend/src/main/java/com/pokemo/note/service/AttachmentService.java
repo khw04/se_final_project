@@ -63,6 +63,23 @@ public class AttachmentService {
         .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "첨부파일을 찾을 수 없습니다."));
   }
 
+  @Transactional
+  public void delete(Long userId, Long id) {
+    Attachment attachment = attachmentRepository.findById(id)
+        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "첨부파일을 찾을 수 없습니다."));
+    Note note = noteRepository.findById(attachment.noteId())
+        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "노트를 찾을 수 없습니다."));
+    if (!note.userId().equals(userId)) {
+      throw new ApiException(HttpStatus.FORBIDDEN, "접근 권한이 없습니다.");
+    }
+    attachmentRepository.delete(attachment);
+    try {
+      Files.deleteIfExists(resolvePath(attachment.storedName()));
+    } catch (IOException exception) {
+      throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "첨부파일 삭제 실패");
+    }
+  }
+
   public Path resolvePath(String storedName) {
     return UPLOAD_DIR.resolve(storedName);
   }

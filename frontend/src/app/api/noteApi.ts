@@ -92,6 +92,10 @@ export const noteApi = {
     })
     return toAttachment(data)
   },
+
+  async deleteAttachment(id: number): Promise<void> {
+    await apiFetch<void>(`/attachments/${id}`, { method: 'DELETE' })
+  },
 }
 
 export const attachmentById = noteApi.attachmentById

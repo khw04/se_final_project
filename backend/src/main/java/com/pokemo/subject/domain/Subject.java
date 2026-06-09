@@ -39,6 +39,17 @@ public class Subject {
     this.color = color;
   }
 
+  public void update(String name, String color) {
+    if (name == null || name.isBlank()) {
+      throw new IllegalArgumentException("Subject name must not be blank");
+    }
+    if (color == null || color.isBlank()) {
+      throw new IllegalArgumentException("Subject color must not be blank");
+    }
+    this.name = name;
+    this.color = color;
+  }
+
   public Long id() {
     return id;
   }

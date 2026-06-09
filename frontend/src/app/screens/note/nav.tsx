@@ -7,5 +7,11 @@ export const noteNavEntry: NavEntry = {
   label: '노트',
   section: '학습',
   icon: 'book',
-  render: ({ options }) => <NotesScreen key={options?.noteId ?? 'all'} initialNoteId={options?.noteId} />,
+  render: ({ options, navigate }) => (
+    <NotesScreen
+      key={options?.noteId ?? 'all'}
+      initialNoteId={options?.noteId}
+      onOpenQuiz={(quizId) => navigate('quiz', { quizId })}
+    />
+  ),
 }
