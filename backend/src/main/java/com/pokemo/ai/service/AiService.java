@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -100,11 +101,11 @@ public class AiService {
     }
   }
 
-  @Transactional
   public QuizResponse generateQuiz(long userId, long noteId, int count) {
     Note note = findOwnedNote(userId, noteId);
     String content = requireContent(note);
     String recentQuestions = recentQuestionTexts(userId, noteId);
+    String variationSeed = UUID.randomUUID().toString();
     String prompt = """
         다음 학습 노트로 퀴즈 %d개를 생성해라.
         반드시 JSON만 반환해라. 형식:
@@ -113,13 +114,15 @@ public class AiService {
         이전에 낸 문제와 같은 문장, 같은 수치, 같은 보기 조합을 반복하지 마라.
         문제 유형은 가능한 한 MCQ, SHORT, OX가 섞이게 하고, 개념 태그도 서로 다르게 배분해라.
         같은 개념을 묻더라도 상황, 조건, 표현, 오답 선택지를 바꿔 새 문제처럼 만들어라.
+        아래 변형 seed를 참고해 매번 다른 관점과 예시로 출제해라.
+        변형 seed: %s
         최근 생성된 문제 목록:
         %s
 
         제목: %s
         내용:
         %s
-        """.formatted(count, recentQuestions, note.title(), content);
+        """.formatted(count, variationSeed, recentQuestions, note.title(), content);
 
     try {
       JsonNode root = parseJson(aiClient.generateText(prompt));

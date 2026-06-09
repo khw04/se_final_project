@@ -9,6 +9,7 @@ import type { Answer, Question, QuestionType } from '../types'
 import { useApi } from '../useApi'
 
 type Picked = string | number | boolean | null
+const QUESTION_TYPES: QuestionType[] = ['mcq', 'ox', 'short']
 
 export function QuizScreen({ quizId }: { quizId?: number }) {
   const { data: quizList, loading: listLoading, refetch: refetchQuizList } = useApi(() => quizApi.listQuizzes(), [])
@@ -107,9 +108,10 @@ export function QuizScreen({ quizId }: { quizId?: number }) {
     )
   }
 
-  const filtered = quiz.questions.filter((q) => q.type === type)
+  const questions = quiz.questions
+  const filtered = questions.filter((q) => q.type === type)
   const answeredQuestionIds = new Set(answers.map((answer) => answer.questionId))
-  const total = quiz.questions.length
+  const total = questions.length
   const current = filtered.find((question) => !answeredQuestionIds.has(question.id)) ?? null
   const subject = subjectById(quiz.subjectId)
   const allAnswered = answeredQuestionIds.size >= total
@@ -137,6 +139,12 @@ export function QuizScreen({ quizId }: { quizId?: number }) {
   }
 
   function next() {
+    const nextType = QUESTION_TYPES.find((candidate) =>
+      questions.some((question) => question.type === candidate && !answeredQuestionIds.has(question.id)),
+    )
+    if (nextType) {
+      setType(nextType)
+    }
     setRevealed(false)
     setPicked(null)
   }
@@ -224,9 +232,12 @@ export function QuizScreen({ quizId }: { quizId?: number }) {
               }}
             />
           ) : (
-            <p className="muted-note" style={{ padding: 32, textAlign: 'center' }}>
-              이 유형의 문제가 없습니다.
-            </p>
+            <div className="quiz-empty-type">
+              <p className="muted-note">이 유형에서 남은 문제가 없습니다.</p>
+              <button type="button" className="surface__title-action" onClick={next}>
+                남은 문제로 이동
+              </button>
+            </div>
           )}
 
           <footer className="quiz-footer">
