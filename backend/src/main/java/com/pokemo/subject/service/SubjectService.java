@@ -36,6 +36,19 @@ public class SubjectService {
   }
 
   @Transactional
+  public SubjectResponse update(Long id, CreateSubjectRequest request) {
+    Subject subject = subjectRepository.findById(id)
+        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "과목을 찾을 수 없습니다."));
+    subjectRepository.findByName(request.name())
+        .filter(existing -> !existing.id().equals(id))
+        .ifPresent(existing -> {
+          throw new ApiException(HttpStatus.CONFLICT, "이미 존재하는 과목명입니다.");
+        });
+    subject.update(request.name(), request.color());
+    return SubjectResponse.from(subject);
+  }
+
+  @Transactional
   public void delete(Long id) {
     if (!subjectRepository.existsById(id)) {
       throw new ApiException(HttpStatus.NOT_FOUND, "과목을 찾을 수 없습니다.");

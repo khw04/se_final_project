@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import { type AuthSession, clearAuthSession } from '../lib/authApi'
+import { type AuthSession, clearAuthSession, logoutUser } from '../lib/authApi'
 
 import { studyApi } from './api/studyApi'
 import { AppHeader } from './components/AppHeader'
@@ -137,8 +137,17 @@ export function AppShell({ session }: AppShellProps) {
     setView({ id: viewId, options })
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    if (runningSubjectId !== null && !saving) {
+      await stopStudyTimer()
+    }
+    try {
+      await logoutUser(session.refreshToken)
+    } catch {
+      // 로컬 세션은 반드시 제거해서 사용자를 즉시 로그아웃시킨다.
+    }
     clearAuthSession()
+    window.scrollTo({ top: 0, left: 0 })
     window.dispatchEvent(new Event('storage'))
   }
 
@@ -146,9 +155,9 @@ export function AppShell({ session }: AppShellProps) {
 
   return (
     <div className="app-shell">
-      <AppHeader session={session} onHome={() => navigate('dashboard')} hasUnreadNotifications />
+      <AppHeader session={session} onHome={() => navigate('dashboard')} onLogout={() => void handleLogout()} hasUnreadNotifications />
       <div className="app-layout">
-        <Sidebar session={session} activeView={activeEntry.id} onSelect={navigate} onLogout={handleLogout} />
+        <Sidebar session={session} activeView={activeEntry.id} onSelect={navigate} onLogout={() => void handleLogout()} />
         <main className="app-main">{inner}</main>
       </div>
     </div>

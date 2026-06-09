@@ -36,7 +36,11 @@ public class GeminiAiClient implements AiClient {
 
     Map<String, Object> body = Map.of(
         "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
-        "generationConfig", Map.of("temperature", 0.4, "responseMimeType", "application/json")
+        "generationConfig", Map.of(
+            "temperature", 0.8,
+            "topP", 0.9,
+            "responseMimeType", "application/json"
+        )
     );
 
     try {

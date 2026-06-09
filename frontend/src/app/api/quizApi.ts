@@ -29,6 +29,15 @@ export type SubmitAnswerRequest = {
   timeSpentSec: number
 }
 
+export type AnswerCheckResponse = {
+  questionId: number
+  correct: boolean
+  correctIndex?: number
+  correctText?: string
+  correctBool?: boolean
+  explanation?: string
+}
+
 export const quizApi = {
   async listQuizzes(): Promise<Quiz[]> {
     return apiFetch<Quiz[]>('/quizzes')
@@ -51,6 +60,14 @@ export const quizApi = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ answers }),
+    })
+  },
+
+  async checkAnswer(quizId: number, questionId: number, userAnswer: string): Promise<AnswerCheckResponse> {
+    return apiFetch<AnswerCheckResponse>(`/quizzes/${quizId}/questions/${questionId}/check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userAnswer }),
     })
   },
 

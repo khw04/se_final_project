@@ -1,10 +1,11 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 
+import { aiApi } from '../api/aiApi'
 import { relativeKo } from '../api/calendarApi'
 import { noteApi } from '../api/noteApi'
 import { subjectApi } from '../api/subjectApi'
 import { Icon } from '../components/Icon'
-import type { Attachment, Subject, Tag } from '../types'
+import type { Attachment, Subject } from '../types'
 import { useApi } from '../useApi'
 
 type SaveState = 'saved' | 'saving' | 'error'
@@ -14,16 +15,22 @@ const DEFAULT_SUBJECT_COLOR = '#243f6b'
 
 type NotesScreenProps = {
   initialNoteId?: number
+  onOpenQuiz?: (quizId: number) => void
 }
 
-export function NotesScreen({ initialNoteId }: NotesScreenProps) {
+export function NotesScreen({ initialNoteId, onOpenQuiz }: NotesScreenProps) {
   const { data: subjects, refetch: refetchSubjects } = useApi(() => subjectApi.getSubjects(), [])
-  const { data: tags } = useApi(() => subjectApi.getTags(), [])
   const { data: notes, refetch: refetchNotes } = useApi(() => noteApi.getNotes(), [])
 
   const [activeId, setActiveId] = useState<number | null>(initialNoteId ?? null)
   const [activeSubjectId, setActiveSubjectId] = useState<number>(0)
   const [query, setQuery] = useState<string>('')
+  const [editingSubjectId, setEditingSubjectId] = useState<number | null>(null)
+  const [editingSubjectName, setEditingSubjectName] = useState('')
+  const [isSubjectCreateOpen, setIsSubjectCreateOpen] = useState(false)
+  const [newSubjectName, setNewSubjectName] = useState('')
+  const [subjectCreating, setSubjectCreating] = useState(false)
+  const [subjectListMessage, setSubjectListMessage] = useState<string | null>(null)
 
   async function handleCreateNote() {
     const note = await noteApi.createNote('새 노트', activeSubjectId || undefined)
@@ -31,7 +38,7 @@ export function NotesScreen({ initialNoteId }: NotesScreenProps) {
     setActiveId(note.id)
   }
 
-  if (!subjects || !tags || !notes) {
+  if (!subjects || !notes) {
     return (
       <div className="screen notes-screen">
         <header>
@@ -59,6 +66,69 @@ export function NotesScreen({ initialNoteId }: NotesScreenProps) {
   })
 
   const activeSubject = subjects.find((s) => s.id === activeSubjectId)
+  const selectedNoteId = activeId !== null && filteredNotes.some((note) => note.id === activeId)
+    ? activeId
+    : filteredNotes[0]?.id ?? null
+
+  function beginSubjectEdit(subject: Subject) {
+    setEditingSubjectId(subject.id)
+    setEditingSubjectName(subject.name)
+    setSubjectListMessage(null)
+  }
+
+  async function saveSubjectEdit(subject: Subject) {
+    const name = editingSubjectName.trim()
+    if (!name) return
+    try {
+      await subjectApi.updateSubject(subject.id, { name, color: subject.color })
+      setEditingSubjectId(null)
+      setEditingSubjectName('')
+      await refetchSubjects()
+    } catch (error) {
+      setSubjectListMessage(error instanceof Error ? error.message : '과목을 수정하지 못했습니다.')
+    }
+  }
+
+  async function deleteSubject(subjectId: number) {
+    try {
+      await subjectApi.deleteSubject(subjectId)
+      if (activeSubjectId === subjectId) setActiveSubjectId(ALL_SUBJECTS)
+      await refetchSubjects()
+      await refetchNotes()
+    } catch (error) {
+      setSubjectListMessage(error instanceof Error ? error.message : '과목을 삭제하지 못했습니다.')
+    }
+  }
+
+  async function createSubject(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const name = newSubjectName.trim()
+    if (!name) return
+    setSubjectCreating(true)
+    setSubjectListMessage(null)
+    try {
+      const subject = await subjectApi.createSubject({ name, color: DEFAULT_SUBJECT_COLOR })
+      setNewSubjectName('')
+      setIsSubjectCreateOpen(false)
+      setActiveSubjectId(subject.id)
+      await refetchSubjects()
+    } catch (error) {
+      setSubjectListMessage(error instanceof Error ? error.message : '과목을 추가하지 못했습니다.')
+    } finally {
+      setSubjectCreating(false)
+    }
+  }
+
+  async function handleDeleteNote(noteId: number) {
+    const ok = window.confirm('이 노트를 삭제할까요?')
+    if (!ok) return
+    await noteApi.deleteNote(noteId)
+    if (activeId === noteId) {
+      const next = filteredNotes.find((note) => note.id !== noteId)
+      setActiveId(next?.id ?? null)
+    }
+    await refetchNotes()
+  }
 
   return (
     <div className="screen notes-screen">
@@ -93,29 +163,55 @@ export function NotesScreen({ initialNoteId }: NotesScreenProps) {
             {subjects.map((subject) => {
               const count = notes.filter((n) => n.subjectId === subject.id).length
               return (
-                <button
-                  key={subject.id}
-                  type="button"
-                  className={activeSubjectId === subject.id ? 'is-active' : ''}
-                  onClick={() => setActiveSubjectId(subject.id)}
-                >
-                  <span>{subject.name}</span>
-                  <span className="notes-subjects__count">{count}</span>
-                </button>
+                <div key={subject.id} className={`notes-subject-row ${activeSubjectId === subject.id ? 'is-active' : ''}`}>
+                  {editingSubjectId === subject.id ? (
+                    <>
+                      <input
+                        className="notes-subject-row__input"
+                        value={editingSubjectName}
+                        onChange={(event) => setEditingSubjectName(event.target.value)}
+                      />
+                      <button type="button" aria-label="과목 저장" onClick={() => void saveSubjectEdit(subject)}>
+                        <Icon name="check" size={13} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button type="button" className="notes-subject-row__main" onClick={() => setActiveSubjectId(subject.id)}>
+                        <span>{subject.name}</span>
+                        <span className="notes-subjects__count">{count}</span>
+                      </button>
+                      <button type="button" aria-label="과목 수정" onClick={() => beginSubjectEdit(subject)}>
+                        <Icon name="more" size={13} />
+                      </button>
+                      <button type="button" aria-label="과목 삭제" onClick={() => void deleteSubject(subject.id)}>
+                        <Icon name="x" size={13} />
+                      </button>
+                    </>
+                  )}
+                </div>
               )
             })}
           </div>
-
-          <p className="label" style={{ marginTop: 16 }}>
-            태그
-          </p>
-          <div className="notes-tags">
-            {tags.map((tag) => (
-              <span key={tag.id} className="tag">
-                {tag.name}
-              </span>
-            ))}
-          </div>
+          {subjectListMessage ? <p className="notes-editor__picker-error">{subjectListMessage}</p> : null}
+          {isSubjectCreateOpen ? (
+            <form className="notes-subject-create" onSubmit={createSubject}>
+              <input
+                className="notes-subject-row__input"
+                placeholder="새 과목 이름"
+                value={newSubjectName}
+                onChange={(event) => setNewSubjectName(event.target.value)}
+              />
+              <button type="submit" className="surface__title-action" disabled={subjectCreating || !newSubjectName.trim()}>
+                {subjectCreating ? '추가 중...' : '추가'}
+              </button>
+            </form>
+          ) : (
+            <button type="button" className="notes-subject-add" onClick={() => setIsSubjectCreateOpen(true)}>
+              <Icon name="plus" size={14} />
+              과목 추가하기
+            </button>
+          )}
         </aside>
 
         <section className="surface notes-list">
@@ -131,11 +227,8 @@ export function NotesScreen({ initialNoteId }: NotesScreenProps) {
           <ul>
             {filteredNotes.map((note) => {
               const subject = subjects.find((s) => s.id === note.subjectId)
-              const noteTags = note.tagIds
-                .map((id) => tags.find((t) => t.id === id))
-                .filter((t): t is Tag => Boolean(t))
               return (
-                <li key={note.id} className={note.id === activeId ? 'is-active' : ''}>
+                <li key={note.id} className={note.id === selectedNoteId ? 'is-active' : ''}>
                   <button
                     type="button"
                     onClick={() => setActiveId(note.id)}
@@ -145,13 +238,6 @@ export function NotesScreen({ initialNoteId }: NotesScreenProps) {
                     <p className="notes-list__subject">
                       {subject?.name} · {relativeKo(note.updatedAt)}
                     </p>
-                    <div className="notes-list__tags">
-                      {noteTags.map((tag) => (
-                        <span key={tag.id} className="tag">
-                          {tag.name}
-                        </span>
-                      ))}
-                    </div>
                   </button>
                 </li>
               )
@@ -164,13 +250,14 @@ export function NotesScreen({ initialNoteId }: NotesScreenProps) {
           </ul>
         </section>
 
-        {activeId !== null
+        {selectedNoteId !== null
           ? (
               <NoteEditor
-                noteId={activeId}
+                noteId={selectedNoteId}
                 subjects={subjects}
-                tags={tags}
                 onSaved={refetchNotes}
+                onDeleted={() => void handleDeleteNote(selectedNoteId)}
+                onOpenQuiz={onOpenQuiz}
                 onSubjectCreated={(subject) => {
                   setActiveSubjectId(subject.id)
                   refetchSubjects()
@@ -187,26 +274,29 @@ export function NotesScreen({ initialNoteId }: NotesScreenProps) {
 type NoteEditorProps = {
   noteId: number
   subjects: Subject[]
-  tags: Tag[]
   onSaved?: () => void
+  onDeleted?: () => void
   onSubjectCreated?: (subject: Subject) => void
+  onOpenQuiz?: (quizId: number) => void
 }
 
-function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated }: NoteEditorProps) {
+function NoteEditor({ noteId, subjects, onSaved, onDeleted, onSubjectCreated, onOpenQuiz }: NoteEditorProps) {
   const { data: note, loading } = useApi(() => noteApi.getNote(noteId), [noteId])
 
   const [body, setBody] = useState<string>('')
   const [title, setTitle] = useState<string>('')
   const [currentSubjectId, setCurrentSubjectId] = useState<number | null>(null)
-  const [currentTagIds, setCurrentTagIds] = useState<number[]>([])
   const [createdSubjects, setCreatedSubjects] = useState<Subject[]>([])
   const [showSubjectPicker, setShowSubjectPicker] = useState(false)
   const [newSubjectName, setNewSubjectName] = useState('')
   const [subjectError, setSubjectError] = useState<string | null>(null)
   const [subjectSubmitting, setSubjectSubmitting] = useState(false)
   const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [attachmentDeletingId, setAttachmentDeletingId] = useState<number | null>(null)
   const [saveState, setSaveState] = useState<SaveState>('saved')
   const [isPreviewVisible, setIsPreviewVisible] = useState(false)
+  const [quizGenerating, setQuizGenerating] = useState(false)
+  const [quizMessage, setQuizMessage] = useState<string | null>(null)
 
   const dirtyRef = useRef<boolean>(false)
   const onSavedRef = useRef(onSaved)
@@ -218,6 +308,31 @@ function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated }: NoteE
     const uploaded = await noteApi.uploadAttachment(note.id, file)
     setAttachments((prev) => [...prev, uploaded])
     e.target.value = ''
+  }
+
+  async function handleAttachmentDelete(id: number) {
+    setAttachmentDeletingId(id)
+    try {
+      await noteApi.deleteAttachment(id)
+      setAttachments((prev) => prev.filter((item) => item.id !== id))
+    } finally {
+      setAttachmentDeletingId(null)
+    }
+  }
+
+  async function handleGenerateQuiz() {
+    if (!note) return
+    setQuizGenerating(true)
+    setQuizMessage(null)
+    try {
+      const quiz = await aiApi.generateQuiz(note.id)
+      setQuizMessage(`퀴즈를 생성했습니다: ${quiz.title}`)
+      onOpenQuiz?.(quiz.id)
+    } catch (error) {
+      setQuizMessage(error instanceof Error ? error.message : 'AI 퀴즈 생성에 실패했습니다.')
+    } finally {
+      setQuizGenerating(false)
+    }
   }
 
   async function handleSubjectSelect(subjectId: number) {
@@ -265,7 +380,6 @@ function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated }: NoteE
       setBody(note.content)
       setTitle(note.title)
       setCurrentSubjectId(note.subjectId)
-      setCurrentTagIds(note.tagIds)
     })
     noteApi.getAttachments(note.attachmentIds).then((nextAttachments) => {
       if (alive) setAttachments(nextAttachments)
@@ -308,7 +422,6 @@ function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated }: NoteE
     ...createdSubjects.filter((created) => !subjects.some((subject) => subject.id === created.id)),
   ]
   const subject = availableSubjects.find((s) => s.id === currentSubjectId)
-  const noteTags = currentTagIds.map((id) => tags.find((t) => t.id === id)).filter((t): t is Tag => Boolean(t))
 
   function formatBytes(n: number) {
     if (n < 1024) return `${n} B`
@@ -345,11 +458,6 @@ function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated }: NoteE
           >
             <Icon name="plus" size={14} />
           </button>
-          {noteTags.map((tag) => (
-            <span key={tag.id} className="tag">
-              {tag.name}
-            </span>
-          ))}
           {showSubjectPicker && (
             <div className="notes-editor__picker">
               {availableSubjects.map((item) => (
@@ -428,7 +536,13 @@ function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated }: NoteE
                   </p>
                   <p className="attachment__meta">{formatBytes(att.size)}</p>
                 </div>
-                <button type="button" className="attachment__remove" aria-label="첨부 삭제">
+                <button
+                  type="button"
+                  className="attachment__remove"
+                  aria-label="첨부 삭제"
+                  disabled={attachmentDeletingId === att.id}
+                  onClick={() => void handleAttachmentDelete(att.id)}
+                >
                   <Icon name="x" size={12} />
                 </button>
               </div>
@@ -454,12 +568,17 @@ function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated }: NoteE
             <Icon name="image" size={14} style={{ marginRight: 4 }} />
             이미지 첨부
           </button>
-          <button type="button" className="surface__title-action">
+          <button type="button" className="surface__title-action" onClick={() => void handleGenerateQuiz()} disabled={quizGenerating}>
             <Icon name="sparkle" size={14} style={{ marginRight: 4 }} />
-            AI 퀴즈 생성
+            {quizGenerating ? '생성 중...' : 'AI 퀴즈 생성'}
+          </button>
+          <button type="button" className="surface__title-action surface__title-action--danger" onClick={onDeleted}>
+            <Icon name="x" size={14} style={{ marginRight: 4 }} />
+            노트 삭제
           </button>
         </div>
       </footer>
+      {quizMessage ? <p className="muted-note" style={{ margin: '10px 0 0' }}>{quizMessage}</p> : null}
     </section>
   )
 }

@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 
 import { aiApi } from '../api/aiApi'
 import { noteApi } from '../api/noteApi'
-import { quizApi } from '../api/quizApi'
+import { quizApi, type AnswerCheckResponse } from '../api/quizApi'
 import { subjectById } from '../api/subjectApi'
 import { Icon } from '../components/Icon'
 import type { Answer, Question, QuestionType } from '../types'
 import { useApi } from '../useApi'
 
 type Picked = string | number | boolean | null
+const QUESTION_TYPES: QuestionType[] = ['mcq', 'ox', 'short']
 
 export function QuizScreen({ quizId }: { quizId?: number }) {
   const { data: quizList, loading: listLoading, refetch: refetchQuizList } = useApi(() => quizApi.listQuizzes(), [])
@@ -27,6 +28,8 @@ export function QuizScreen({ quizId }: { quizId?: number }) {
   const [picked, setPicked] = useState<Picked>(null)
   const [revealed, setRevealed] = useState<boolean>(false)
   const [answers, setAnswers] = useState<Answer[]>([])
+  const [checkedAnswers, setCheckedAnswers] = useState<Record<number, AnswerCheckResponse>>({})
+  const [checkLoading, setCheckLoading] = useState(false)
   const [submitLoading, setSubmitLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
@@ -42,6 +45,7 @@ export function QuizScreen({ quizId }: { quizId?: number }) {
       setPicked(null)
       setRevealed(false)
       setAnswers([])
+      setCheckedAnswers({})
       setSubmitted(false)
     })
   }, [effectiveQuizId])
@@ -107,36 +111,47 @@ export function QuizScreen({ quizId }: { quizId?: number }) {
     )
   }
 
-  const filtered = quiz.questions.filter((q) => q.type === type)
+  const questions = quiz.questions
+  const filtered = questions.filter((q) => q.type === type)
   const answeredQuestionIds = new Set(answers.map((answer) => answer.questionId))
-  const total = quiz.questions.length
-  const current = filtered.find((question) => !answeredQuestionIds.has(question.id)) ?? null
+  const total = questions.length
+  const revealedQuestionId = revealed ? answers.at(-1)?.questionId : undefined
+  const revealedQuestion = revealedQuestionId != null
+    ? questions.find((question) => question.id === revealedQuestionId) ?? null
+    : null
+  const current = revealedQuestion ?? filtered.find((question) => !answeredQuestionIds.has(question.id)) ?? null
   const subject = subjectById(quiz.subjectId)
   const allAnswered = answeredQuestionIds.size >= total
 
-  function isCorrect(q: Question, value: Picked): boolean {
-    if (q.type === 'mcq') return value === q.correctIndex
-    if (q.type === 'ox') return value === q.correctBool
-    if (q.type === 'short') return String(value ?? '').trim() === (q.correctText ?? '')
-    return false
-  }
-
-  function submit() {
-    if (picked == null || !current) return
+  async function submit() {
+    if (picked == null || !current || !quiz) return
     if (answeredQuestionIds.has(current.id)) return
+    setCheckLoading(true)
+    try {
+      const result = await quizApi.checkAnswer(quiz.id, current.id, String(picked))
+      setCheckedAnswers((prev) => ({ ...prev, [current.id]: result }))
     setAnswers((prev) => [
       ...prev,
       {
         questionId: current.id,
         userAnswer: picked as string | number | boolean,
-        correct: isCorrect(current, picked),
+          correct: result.correct,
         timeSpentSec: 0,
       },
     ])
     setRevealed(true)
+    } finally {
+      setCheckLoading(false)
+    }
   }
 
   function next() {
+    const nextType = QUESTION_TYPES.find((candidate) =>
+      questions.some((question) => question.type === candidate && !answeredQuestionIds.has(question.id)),
+    )
+    if (nextType) {
+      setType(nextType)
+    }
     setRevealed(false)
     setPicked(null)
   }
@@ -216,7 +231,7 @@ export function QuizScreen({ quizId }: { quizId?: number }) {
 
           {current ? (
             <QuestionView
-              question={current}
+              question={{ ...current, ...checkedAnswers[current.id] }}
               picked={picked}
               revealed={revealed}
               onPick={(value) => {
@@ -224,9 +239,12 @@ export function QuizScreen({ quizId }: { quizId?: number }) {
               }}
             />
           ) : (
-            <p className="muted-note" style={{ padding: 32, textAlign: 'center' }}>
-              이 유형의 문제가 없습니다.
-            </p>
+            <div className="quiz-empty-type">
+              <p className="muted-note">이 유형에서 남은 문제가 없습니다.</p>
+              <button type="button" className="surface__title-action" onClick={next}>
+                남은 문제로 이동
+              </button>
+            </div>
           )}
 
           <footer className="quiz-footer">
@@ -253,9 +271,9 @@ export function QuizScreen({ quizId }: { quizId?: number }) {
                 type="button"
                 className="auth-card__submit quiz-submit"
                 onClick={submit}
-                disabled={picked == null || !current}
+                disabled={picked == null || !current || checkLoading}
               >
-                정답 확인
+                {checkLoading ? '채점 중...' : '정답 확인'}
               </button>
             )}
           </footer>
@@ -408,11 +426,11 @@ function QuestionView({ question, picked, revealed, onPick }: QuestionProps) {
   )
 }
 
-function Explanation({ text }: { text: string }) {
+function Explanation({ text }: { text?: string }) {
   return (
     <div className="explain">
       <p className="label">해설</p>
-      <p>{text}</p>
+      <p>{text ?? '해설을 불러오지 못했습니다.'}</p>
     </div>
   )
 }

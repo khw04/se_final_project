@@ -27,8 +27,6 @@ export const pokemoApi = {
 }
 
 export const subjectById = subjectApi.subjectById
-export const tagById = subjectApi.tagById
-export const attachmentById = noteApi.attachmentById
 export const today = calendarApi.today
 export const relativeKo = calendarApi.relativeKo
 export const calcDDay = calendarApi.calcDDay
