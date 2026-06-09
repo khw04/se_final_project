@@ -5,6 +5,7 @@ public record WrongAnswerResponse(
     QuestionResponse question,
     int missCount,
     Long lastAttemptId,
+    Long quizId,
     String lastMissedAt,
     String concept
 ) {}

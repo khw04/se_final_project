@@ -162,13 +162,21 @@ public class QuizService {
                 .findAllById(notes.stream().map(WrongAnswerNote::questionId).toList())
                 .stream().collect(Collectors.toMap(Question::id, q -> q));
 
+        List<Long> attemptIds = notes.stream()
+                .map(WrongAnswerNote::lastAttemptId)
+                .filter(id -> id != null)
+                .distinct().toList();
+        Map<Long, Long> attemptToQuizId = attemptRepository.findAllById(attemptIds)
+                .stream().collect(Collectors.toMap(QuizAttempt::id, QuizAttempt::quizId));
+
         return notes.stream()
                 .filter(note -> {
                     if (type == null || type.isBlank() || "all".equalsIgnoreCase(type)) return true;
                     Question q = questionMap.get(note.questionId());
                     return q != null && q.type().name().equalsIgnoreCase(type);
                 })
-                .map(note -> toWrongAnswerResponse(note, questionMap.get(note.questionId())))
+                .map(note -> toWrongAnswerResponse(note, questionMap.get(note.questionId()),
+                        note.lastAttemptId() != null ? attemptToQuizId.get(note.lastAttemptId()) : null))
                 .filter(r -> r.question() != null)
                 .toList();
     }
@@ -268,11 +276,11 @@ public class QuizService {
                 a.completedAt() != null ? a.completedAt().toString() : null);
     }
 
-    private WrongAnswerResponse toWrongAnswerResponse(WrongAnswerNote note, Question q) {
+    private WrongAnswerResponse toWrongAnswerResponse(WrongAnswerNote note, Question q, Long quizId) {
         return new WrongAnswerResponse(
                 note.questionId(),
                 q != null ? toQuestionResponse(q, true) : null,
-                note.missCount(), note.lastAttemptId(),
+                note.missCount(), note.lastAttemptId(), quizId,
                 note.lastMissedAt().toString(), note.concept());
     }
 
