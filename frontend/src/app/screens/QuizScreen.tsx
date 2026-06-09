@@ -115,7 +115,11 @@ export function QuizScreen({ quizId }: { quizId?: number }) {
   const filtered = questions.filter((q) => q.type === type)
   const answeredQuestionIds = new Set(answers.map((answer) => answer.questionId))
   const total = questions.length
-  const current = filtered.find((question) => !answeredQuestionIds.has(question.id)) ?? null
+  const revealedQuestionId = revealed ? answers.at(-1)?.questionId : undefined
+  const revealedQuestion = revealedQuestionId != null
+    ? questions.find((question) => question.id === revealedQuestionId) ?? null
+    : null
+  const current = revealedQuestion ?? filtered.find((question) => !answeredQuestionIds.has(question.id)) ?? null
   const subject = subjectById(quiz.subjectId)
   const allAnswered = answeredQuestionIds.size >= total
 
