@@ -295,6 +295,14 @@
 
 .surface__title-action:hover { transform: translateY(-2px); }
 
+.surface__title-action--danger {
+  color: var(--color-warning);
+}
+
+.surface__title-action--danger:hover {
+  background: var(--color-warning-soft);
+}
+
 .screen {
   display: grid;
   gap: var(--space-5);
@@ -960,8 +968,6 @@
 
 .notes-list__title { color: var(--color-ink); font-weight: var(--font-weight-bold); margin: 0; }
 .notes-list__subject { color: var(--color-muted); font-size: 12px; margin: 4px 0 8px; }
-.notes-list__tags { display: flex; flex-wrap: wrap; gap: 4px; }
-
 .notes-editor__top { border-bottom: 1px solid var(--color-line); padding-bottom: var(--space-4); margin-bottom: var(--space-5); }
 
 .notes-editor__title {

@@ -12,7 +12,6 @@ import com.pokemo.auth.domain.UserRole;
 import com.pokemo.auth.repository.AuthTokenRepository;
 import com.pokemo.auth.repository.UserAccountRepository;
 import com.pokemo.note.repository.NoteRepository;
-import com.pokemo.note.repository.TagRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,13 +32,11 @@ class NoteControllerTests {
   @Autowired UserAccountRepository userAccountRepository;
   @Autowired AuthTokenRepository authTokenRepository;
   @Autowired NoteRepository noteRepository;
-  @Autowired TagRepository tagRepository;
   @Autowired PasswordEncoder passwordEncoder;
 
   @BeforeEach
   void setUp() {
     noteRepository.deleteAll();
-    tagRepository.deleteAll();
     authTokenRepository.deleteAll();
     userAccountRepository.deleteAll();
     userAccountRepository.save(new UserAccount(
@@ -171,61 +168,6 @@ class NoteControllerTests {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(1))
         .andExpect(jsonPath("$[0].title").value("극한의 정의"));
-  }
-
-  @Test
-  void createTagAndAddToNote() throws Exception {
-    String token = token();
-
-    MvcResult tagResult = mockMvc.perform(post("/api/tags")
-            .header("Authorization", "Bearer " + token)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {"name":"핵심"}
-                """))
-        .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.name").value("핵심"))
-        .andReturn();
-
-    String tagId = tagResult.getResponse().getContentAsString()
-        .replaceAll(".*\"id\":(\\d+).*", "$1");
-
-    MvcResult noteResult = mockMvc.perform(post("/api/notes")
-            .header("Authorization", "Bearer " + token)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {"title":"태그테스트","content":""}
-                """))
-        .andExpect(status().isCreated())
-        .andReturn();
-
-    String noteId = noteResult.getResponse().getContentAsString()
-        .replaceAll(".*\"id\":(\\d+).*", "$1");
-
-    mockMvc.perform(post("/api/notes/" + noteId + "/tags/" + tagId)
-            .header("Authorization", "Bearer " + token))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.tagIds[0]").value(Integer.parseInt(tagId)));
-  }
-
-  @Test
-  void createTagConflictOnDuplicate() throws Exception {
-    String token = token();
-    mockMvc.perform(post("/api/tags")
-            .header("Authorization", "Bearer " + token)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {"name":"중복태그"}
-                """))
-        .andExpect(status().isCreated());
-
-    mockMvc.perform(post("/api/tags")
-            .header("Authorization", "Bearer " + token)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {"name":"중복태그"}
-                """))
-        .andExpect(status().isConflict());
   }
 
   @Test

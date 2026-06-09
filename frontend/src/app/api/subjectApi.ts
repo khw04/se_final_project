@@ -1,9 +1,8 @@
-import type { Subject, Tag } from '../types'
+import type { Subject } from '../types'
 
 import { apiFetch } from './client'
 
 let subjectCache: Subject[] = []
-let tagCache: Tag[] = []
 
 type CreateSubjectInput = {
   name: string
@@ -44,23 +43,11 @@ export const subjectApi = {
     subjectCache = subjectCache.filter((subject) => subject.id !== id)
   },
 
-  async getTags(): Promise<Tag[]> {
-    const data = await apiFetch<Tag[]>('/tags')
-    tagCache = data
-    return data
-  },
-
   subjectById(id: number): Subject | undefined {
     return subjectCache.find((s) => s.id === id)
-  },
-
-  tagById(id: number): Tag | undefined {
-    return tagCache.find((t) => t.id === id)
   },
 }
 
 export const createSubject = subjectApi.createSubject
 export const getSubjects = subjectApi.getSubjects
-export const getTags = subjectApi.getTags
 export const subjectById = subjectApi.subjectById
-export const tagById = subjectApi.tagById

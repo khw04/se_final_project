@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+
 import { AppShell } from './app/AppShell'
 import { useAuthSession } from './app/useAuthSession'
 import { HomePage } from './pages/HomePage'
@@ -6,6 +8,12 @@ import './App.css'
 
 function App() {
   const session = useAuthSession()
+
+  useEffect(() => {
+    if (!session) {
+      window.scrollTo({ top: 0, left: 0 })
+    }
+  }, [session])
 
   if (session) {
     return <AppShell session={session} />

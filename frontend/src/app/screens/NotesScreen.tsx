@@ -5,7 +5,7 @@ import { relativeKo } from '../api/calendarApi'
 import { noteApi } from '../api/noteApi'
 import { subjectApi } from '../api/subjectApi'
 import { Icon } from '../components/Icon'
-import type { Attachment, Subject, Tag } from '../types'
+import type { Attachment, Subject } from '../types'
 import { useApi } from '../useApi'
 
 type SaveState = 'saved' | 'saving' | 'error'
@@ -20,7 +20,6 @@ type NotesScreenProps = {
 
 export function NotesScreen({ initialNoteId, onOpenQuiz }: NotesScreenProps) {
   const { data: subjects, refetch: refetchSubjects } = useApi(() => subjectApi.getSubjects(), [])
-  const { data: tags } = useApi(() => subjectApi.getTags(), [])
   const { data: notes, refetch: refetchNotes } = useApi(() => noteApi.getNotes(), [])
 
   const [activeId, setActiveId] = useState<number | null>(initialNoteId ?? null)
@@ -39,7 +38,7 @@ export function NotesScreen({ initialNoteId, onOpenQuiz }: NotesScreenProps) {
     setActiveId(note.id)
   }
 
-  if (!subjects || !tags || !notes) {
+  if (!subjects || !notes) {
     return (
       <div className="screen notes-screen">
         <header>
@@ -118,6 +117,17 @@ export function NotesScreen({ initialNoteId, onOpenQuiz }: NotesScreenProps) {
     } finally {
       setSubjectCreating(false)
     }
+  }
+
+  async function handleDeleteNote(noteId: number) {
+    const ok = window.confirm('이 노트를 삭제할까요?')
+    if (!ok) return
+    await noteApi.deleteNote(noteId)
+    if (activeId === noteId) {
+      const next = filteredNotes.find((note) => note.id !== noteId)
+      setActiveId(next?.id ?? null)
+    }
+    await refetchNotes()
   }
 
   return (
@@ -217,9 +227,6 @@ export function NotesScreen({ initialNoteId, onOpenQuiz }: NotesScreenProps) {
           <ul>
             {filteredNotes.map((note) => {
               const subject = subjects.find((s) => s.id === note.subjectId)
-              const noteTags = note.tagIds
-                .map((id) => tags.find((t) => t.id === id))
-                .filter((t): t is Tag => Boolean(t))
               return (
                 <li key={note.id} className={note.id === selectedNoteId ? 'is-active' : ''}>
                   <button
@@ -231,13 +238,6 @@ export function NotesScreen({ initialNoteId, onOpenQuiz }: NotesScreenProps) {
                     <p className="notes-list__subject">
                       {subject?.name} · {relativeKo(note.updatedAt)}
                     </p>
-                    <div className="notes-list__tags">
-                      {noteTags.map((tag) => (
-                        <span key={tag.id} className="tag">
-                          {tag.name}
-                        </span>
-                      ))}
-                    </div>
                   </button>
                 </li>
               )
@@ -255,8 +255,8 @@ export function NotesScreen({ initialNoteId, onOpenQuiz }: NotesScreenProps) {
               <NoteEditor
                 noteId={selectedNoteId}
                 subjects={subjects}
-                tags={tags}
                 onSaved={refetchNotes}
+                onDeleted={() => void handleDeleteNote(selectedNoteId)}
                 onOpenQuiz={onOpenQuiz}
                 onSubjectCreated={(subject) => {
                   setActiveSubjectId(subject.id)
@@ -274,19 +274,18 @@ export function NotesScreen({ initialNoteId, onOpenQuiz }: NotesScreenProps) {
 type NoteEditorProps = {
   noteId: number
   subjects: Subject[]
-  tags: Tag[]
   onSaved?: () => void
+  onDeleted?: () => void
   onSubjectCreated?: (subject: Subject) => void
   onOpenQuiz?: (quizId: number) => void
 }
 
-function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated, onOpenQuiz }: NoteEditorProps) {
+function NoteEditor({ noteId, subjects, onSaved, onDeleted, onSubjectCreated, onOpenQuiz }: NoteEditorProps) {
   const { data: note, loading } = useApi(() => noteApi.getNote(noteId), [noteId])
 
   const [body, setBody] = useState<string>('')
   const [title, setTitle] = useState<string>('')
   const [currentSubjectId, setCurrentSubjectId] = useState<number | null>(null)
-  const [currentTagIds, setCurrentTagIds] = useState<number[]>([])
   const [createdSubjects, setCreatedSubjects] = useState<Subject[]>([])
   const [showSubjectPicker, setShowSubjectPicker] = useState(false)
   const [newSubjectName, setNewSubjectName] = useState('')
@@ -381,7 +380,6 @@ function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated, onOpenQ
       setBody(note.content)
       setTitle(note.title)
       setCurrentSubjectId(note.subjectId)
-      setCurrentTagIds(note.tagIds)
     })
     noteApi.getAttachments(note.attachmentIds).then((nextAttachments) => {
       if (alive) setAttachments(nextAttachments)
@@ -424,7 +422,6 @@ function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated, onOpenQ
     ...createdSubjects.filter((created) => !subjects.some((subject) => subject.id === created.id)),
   ]
   const subject = availableSubjects.find((s) => s.id === currentSubjectId)
-  const noteTags = currentTagIds.map((id) => tags.find((t) => t.id === id)).filter((t): t is Tag => Boolean(t))
 
   function formatBytes(n: number) {
     if (n < 1024) return `${n} B`
@@ -461,11 +458,6 @@ function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated, onOpenQ
           >
             <Icon name="plus" size={14} />
           </button>
-          {noteTags.map((tag) => (
-            <span key={tag.id} className="tag">
-              {tag.name}
-            </span>
-          ))}
           {showSubjectPicker && (
             <div className="notes-editor__picker">
               {availableSubjects.map((item) => (
@@ -579,6 +571,10 @@ function NoteEditor({ noteId, subjects, tags, onSaved, onSubjectCreated, onOpenQ
           <button type="button" className="surface__title-action" onClick={() => void handleGenerateQuiz()} disabled={quizGenerating}>
             <Icon name="sparkle" size={14} style={{ marginRight: 4 }} />
             {quizGenerating ? '생성 중...' : 'AI 퀴즈 생성'}
+          </button>
+          <button type="button" className="surface__title-action surface__title-action--danger" onClick={onDeleted}>
+            <Icon name="x" size={14} style={{ marginRight: 4 }} />
+            노트 삭제
           </button>
         </div>
       </footer>

@@ -114,6 +114,19 @@ export function loginUser(credentials: AuthCredentials) {
   })
 }
 
+export function logoutUser(refreshToken: string) {
+  if (mockAuthMode) {
+    return Promise.resolve<null>(null)
+  }
+  return requestJson<null>('/auth/logout', {
+    body: JSON.stringify({ refreshToken }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  })
+}
+
 export function getCurrentUser(accessToken: string, tokenType = 'Bearer') {
   if (mockAuthMode) {
     const session = loadAuthSession()
