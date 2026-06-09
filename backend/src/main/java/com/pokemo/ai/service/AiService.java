@@ -29,6 +29,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -196,10 +197,10 @@ public class AiService {
   private List<String> recentQuestionTextList(long userId, long noteId) {
     return quizRepository.findByCreatedByOrderByCreatedAtDesc(userId).stream()
         .filter(quiz -> quiz.generatedFromNoteId() != null && quiz.generatedFromNoteId().equals(noteId))
-        .limit(5)
+        .limit(10)
         .flatMap((Quiz quiz) -> quiz.quizQuestions().stream())
         .map(quizQuestion -> quizQuestion.question().text())
-        .limit(20)
+        .limit(50)
         .toList();
   }
 
@@ -238,7 +239,14 @@ public class AiService {
     if (left.equals(right)) return true;
     String shorter = left.length() <= right.length() ? left : right;
     String longer = left.length() > right.length() ? left : right;
-    return shorter.length() >= 12 && longer.contains(shorter);
+    if (shorter.length() >= 12 && longer.contains(shorter)) return true;
+    Set<String> leftWords = new HashSet<>(Arrays.asList(left.split("\\s+")));
+    Set<String> rightWords = new HashSet<>(Arrays.asList(right.split("\\s+")));
+    Set<String> intersection = new HashSet<>(leftWords);
+    intersection.retainAll(rightWords);
+    Set<String> union = new HashSet<>(leftWords);
+    union.addAll(rightWords);
+    return !union.isEmpty() && (double) intersection.size() / union.size() >= 0.65;
   }
 
   private QuestionRequest toQuestionRequest(JsonNode node, Long fallbackSubjectId) {
