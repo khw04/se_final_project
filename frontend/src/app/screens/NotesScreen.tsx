@@ -28,6 +28,9 @@ export function NotesScreen({ initialNoteId, onOpenQuiz }: NotesScreenProps) {
   const [query, setQuery] = useState<string>('')
   const [editingSubjectId, setEditingSubjectId] = useState<number | null>(null)
   const [editingSubjectName, setEditingSubjectName] = useState('')
+  const [isSubjectCreateOpen, setIsSubjectCreateOpen] = useState(false)
+  const [newSubjectName, setNewSubjectName] = useState('')
+  const [subjectCreating, setSubjectCreating] = useState(false)
   const [subjectListMessage, setSubjectListMessage] = useState<string | null>(null)
 
   async function handleCreateNote() {
@@ -98,6 +101,25 @@ export function NotesScreen({ initialNoteId, onOpenQuiz }: NotesScreenProps) {
     }
   }
 
+  async function createSubject(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const name = newSubjectName.trim()
+    if (!name) return
+    setSubjectCreating(true)
+    setSubjectListMessage(null)
+    try {
+      const subject = await subjectApi.createSubject({ name, color: DEFAULT_SUBJECT_COLOR })
+      setNewSubjectName('')
+      setIsSubjectCreateOpen(false)
+      setActiveSubjectId(subject.id)
+      await refetchSubjects()
+    } catch (error) {
+      setSubjectListMessage(error instanceof Error ? error.message : '과목을 추가하지 못했습니다.')
+    } finally {
+      setSubjectCreating(false)
+    }
+  }
+
   return (
     <div className="screen notes-screen">
       <header>
@@ -162,17 +184,24 @@ export function NotesScreen({ initialNoteId, onOpenQuiz }: NotesScreenProps) {
             })}
           </div>
           {subjectListMessage ? <p className="notes-editor__picker-error">{subjectListMessage}</p> : null}
-
-          <p className="label" style={{ marginTop: 16 }}>
-            태그
-          </p>
-          <div className="notes-tags">
-            {tags.map((tag) => (
-              <span key={tag.id} className="tag">
-                {tag.name}
-              </span>
-            ))}
-          </div>
+          {isSubjectCreateOpen ? (
+            <form className="notes-subject-create" onSubmit={createSubject}>
+              <input
+                className="notes-subject-row__input"
+                placeholder="새 과목 이름"
+                value={newSubjectName}
+                onChange={(event) => setNewSubjectName(event.target.value)}
+              />
+              <button type="submit" className="surface__title-action" disabled={subjectCreating || !newSubjectName.trim()}>
+                {subjectCreating ? '추가 중...' : '추가'}
+              </button>
+            </form>
+          ) : (
+            <button type="button" className="notes-subject-add" onClick={() => setIsSubjectCreateOpen(true)}>
+              <Icon name="plus" size={14} />
+              과목 추가하기
+            </button>
+          )}
         </aside>
 
         <section className="surface notes-list">

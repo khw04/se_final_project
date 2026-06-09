@@ -1,7 +1,10 @@
 /* App shell — header + (logged-in) sidebar + content */
 
 .app-shell {
-  min-height: 100svh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100svh;
+  overflow: hidden;
   padding: var(--space-5);
 }
 
@@ -124,12 +127,20 @@
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
   gap: var(--space-5);
+  min-height: 0;
   margin: var(--space-5) auto 0;
   max-width: var(--layout-notes);
   align-items: start;
+  width: 100%;
 }
 
-.app-main { min-width: 0; }
+.app-main {
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  padding-right: var(--space-2);
+  scrollbar-gutter: stable;
+}
 
 .sidebar {
   background: var(--color-surface-translucent);
@@ -137,9 +148,10 @@
   border: var(--border-width-1) solid var(--color-line);
   border-radius: var(--radius-4);
   box-shadow: var(--shadow-card);
+  max-height: 100%;
+  overflow-y: auto;
   padding: var(--space-5);
-  position: sticky;
-  top: var(--space-5);
+  scrollbar-gutter: stable;
 }
 
 .sidebar__user {
@@ -872,6 +884,35 @@
   color: var(--color-ink);
   min-width: 0;
   padding: 7px 10px;
+}
+
+.notes-subject-add {
+  align-items: center;
+  background: var(--color-surface-strong);
+  border: 1px dashed var(--color-line);
+  border-radius: var(--radius-2);
+  color: var(--color-accent-strong);
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: 14px;
+  font-weight: var(--font-weight-bold);
+  gap: var(--space-2);
+  justify-content: center;
+  margin-top: var(--space-3);
+  padding: 10px 12px;
+  width: 100%;
+}
+
+.notes-subject-add:hover {
+  border-color: var(--color-accent);
+  transform: translateY(-1px);
+}
+
+.notes-subject-create {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .notes-subjects > button {
@@ -1664,8 +1705,23 @@
 
 /* Responsive */
 @media (max-width: 900px) {
+  .app-shell {
+    height: auto;
+    min-height: 100svh;
+    overflow: visible;
+  }
+
   .app-layout { grid-template-columns: 1fr; }
-  .sidebar { position: static; }
+
+  .app-main {
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .sidebar {
+    max-height: none;
+    overflow: visible;
+  }
 }
 
 @media (max-width: 560px) {
