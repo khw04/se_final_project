@@ -46,6 +46,11 @@ public class AttachmentController {
     return attachmentService.upload(userId, noteId, file);
   }
 
+  @GetMapping("/attachments/{id}/meta")
+  AttachmentResponse meta(@PathVariable Long id) {
+    return AttachmentResponse.from(attachmentService.findForDownload(id));
+  }
+
   @GetMapping("/attachments/{id}")
   ResponseEntity<Resource> download(@PathVariable Long id) throws IOException {
     Attachment attachment = attachmentService.findForDownload(id);

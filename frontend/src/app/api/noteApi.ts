@@ -33,7 +33,7 @@ export const noteApi = {
   async getAttachments(ids: number[]): Promise<Attachment[]> {
     if (!ids.length) return []
     const results = await Promise.all(
-      ids.map((id) => apiFetch<BackendAttachment>(`/attachments/${id}`).catch(() => null))
+      ids.map((id) => apiFetch<BackendAttachment>(`/attachments/${id}/meta`).catch(() => null))
     )
     return results.filter((a): a is BackendAttachment => a !== null).map(toAttachment)
   },
