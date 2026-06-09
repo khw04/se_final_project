@@ -23,7 +23,7 @@ type Props = {
 
 export function DashboardScreen({ session, onJumpTo, studyTimer }: Props) {
   const greeting = session.email.split('@')[0]
-  const { data, loading } = useApi(() => dashboardApi.getDashboard(), [])
+  const { data, loading, refetch } = useApi(() => dashboardApi.getDashboard(), [])
   const { data: subjects } = useApi(() => subjectApi.getSubjects(), [])
 
   if (loading || !data) {
@@ -58,16 +58,6 @@ export function DashboardScreen({ session, onJumpTo, studyTimer }: Props) {
         </p>
       </header>
 
-      <DDayStrip events={data.upcomingExams} onJumpTo={onJumpTo} />
-
-      <div className="dashboard-grid">
-        <WeeklyStudyCard points={withLiveTodayStudy(data.weeklyStudy, studyTimer)} />
-        <StudyTimerCard subjects={subjects ?? []} timer={studyTimer} />
-        <SubjectProgressCard rows={data.subjectProgress} onAll={() => onJumpTo('recommend')} />
-        <AiRecommendCard items={data.recommendation} onAll={() => onJumpTo('recommend')} />
-        <QuizTrendCard points={data.accuracyTrend} />
-      </div>
-
       <section className="surface">
         <div className="surface__title">
           <h2>빠른 이동</h2>
@@ -91,6 +81,15 @@ export function DashboardScreen({ session, onJumpTo, studyTimer }: Props) {
           </button>
         </div>
       </section>
+
+      <DDayStrip events={data.upcomingExams} onJumpTo={onJumpTo} />
+
+      <div className="dashboard-grid">
+        <WeeklyStudyCard points={withLiveTodayStudy(data.weeklyStudy, studyTimer)} progressRows={data.subjectProgress} />
+        <StudyTimerCard subjects={subjects ?? []} timer={studyTimer} />
+        <QuizTrendCard points={data.accuracyTrend} />
+        <AiRecommendCard items={data.recommendation} onRefresh={refetch} />
+      </div>
     </div>
   )
 }
@@ -179,7 +178,7 @@ function DDayStrip({ events, onJumpTo }: { events: CalendarEvent[]; onJumpTo: (v
   )
 }
 
-function WeeklyStudyCard({ points }: { points: WeeklyStudyPoint[] }) {
+function WeeklyStudyCard({ points, progressRows }: { points: WeeklyStudyPoint[]; progressRows: SubjectProgress[] }) {
   const seconds = points.map((p) => p.studySeconds ?? p.studyMinutes * 60)
   const maxSeconds = Math.max(360 * 60, ...seconds)
   const totalH = (seconds.reduce((sum, value) => sum + value, 0) / 3600).toFixed(1)
@@ -202,18 +201,21 @@ function WeeklyStudyCard({ points }: { points: WeeklyStudyPoint[] }) {
           </div>
         ))}
       </div>
+      <div className="dashboard-card__divider" />
+      <SubjectProgressList rows={progressRows} />
     </section>
   )
 }
 
-function SubjectProgressCard({ rows, onAll }: { rows: SubjectProgress[]; onAll: () => void }) {
+function SubjectProgressList({ rows }: { rows: SubjectProgress[] }) {
+  if (rows.length === 0) {
+    return <p className="muted-note" style={{ margin: 0 }}>아직 과목별 풀이 기록이 없습니다.</p>
+  }
+
   return (
-    <section className="surface dashboard-card">
-      <div className="surface__title">
+    <>
+      <div className="surface__title surface__title--compact">
         <h2>과목별 성취도</h2>
-        <button type="button" className="surface__title-action" onClick={onAll}>
-          전체 보기
-        </button>
       </div>
       <div className="progress-list">
         {rows.map((row) => {
@@ -230,11 +232,11 @@ function SubjectProgressCard({ rows, onAll }: { rows: SubjectProgress[]; onAll: 
           )
         })}
       </div>
-    </section>
+    </>
   )
 }
 
-function AiRecommendCard({ items, onAll }: { items: PriorityRecommendation[]; onAll: () => void }) {
+function AiRecommendCard({ items, onRefresh }: { items: PriorityRecommendation[]; onRefresh: () => void }) {
   return (
     <section className="surface dashboard-card">
       <div className="surface__title">
@@ -242,7 +244,7 @@ function AiRecommendCard({ items, onAll }: { items: PriorityRecommendation[]; on
           <Icon name="sparkle" size={20} style={{ marginRight: 8 }} />
           AI 추천
         </h2>
-        <button type="button" className="surface__title-action" onClick={onAll}>
+        <button type="button" className="surface__title-action" onClick={onRefresh}>
           새로고침
         </button>
       </div>

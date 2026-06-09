@@ -21,10 +21,12 @@ export function StatsScreen() {
       {loading ? (
         <div className="surface" style={{ height: 300, opacity: 0.4 }} />
       ) : (
-        <div style={{ display: 'grid', gap: 20 }}>
-          <WeeklyChart data={weekly ?? []} />
+        <div className="stats-grid">
+          <div className="stats-grid__pair">
+            <WeeklyChart data={weekly ?? []} />
+            <AccuracyTrendChart data={trend ?? []} />
+          </div>
           <SubjectProgressChart data={progress ?? []} />
-          <AccuracyTrendChart data={trend ?? []} />
         </div>
       )}
     </div>
@@ -130,8 +132,8 @@ function SubjectProgressChart({ data }: { data: SubjectProgress[] }) {
 }
 
 function AccuracyTrendChart({ data }: { data: AccuracyTrendPoint[] }) {
-  const W = 500
-  const H = 140
+  const W = 360
+  const H = 120
   const pad = { top: 16, right: 16, bottom: 24, left: 32 }
   const innerW = W - pad.left - pad.right
   const innerH = H - pad.top - pad.bottom

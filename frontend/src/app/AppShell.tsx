@@ -137,7 +137,10 @@ export function AppShell({ session }: AppShellProps) {
     setView({ id: viewId, options })
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    if (runningSubjectId !== null && !saving) {
+      await stopStudyTimer()
+    }
     clearAuthSession()
     window.dispatchEvent(new Event('storage'))
   }
@@ -146,9 +149,9 @@ export function AppShell({ session }: AppShellProps) {
 
   return (
     <div className="app-shell">
-      <AppHeader session={session} onHome={() => navigate('dashboard')} hasUnreadNotifications />
+      <AppHeader session={session} onHome={() => navigate('dashboard')} onLogout={() => void handleLogout()} hasUnreadNotifications />
       <div className="app-layout">
-        <Sidebar session={session} activeView={activeEntry.id} onSelect={navigate} onLogout={handleLogout} />
+        <Sidebar session={session} activeView={activeEntry.id} onSelect={navigate} onLogout={() => void handleLogout()} />
         <main className="app-main">{inner}</main>
       </div>
     </div>
