@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { type AuthSession, clearAuthSession } from '../lib/authApi'
 
@@ -37,7 +37,6 @@ export function AppShell({ session }: AppShellProps) {
   const [saving, setSaving] = useState(false)
   const [timerMessage, setTimerMessage] = useState<string | null>(null)
   const [activeDay, setActiveDay] = useState(todayKey())
-  const mainRef = useRef<HTMLElement>(null)
   const activeEntry = findNavEntry(view.id)
 
   async function refreshStudySummary() {
@@ -138,10 +137,6 @@ export function AppShell({ session }: AppShellProps) {
     setView({ id: viewId, options })
   }
 
-  useEffect(() => {
-    mainRef.current?.scrollTo({ top: 0, left: 0 })
-  }, [view.id, view.options?.noteId, view.options?.quizId])
-
   async function handleLogout() {
     if (runningSubjectId !== null && !saving) {
       await stopStudyTimer()
@@ -157,7 +152,7 @@ export function AppShell({ session }: AppShellProps) {
       <AppHeader session={session} onHome={() => navigate('dashboard')} onLogout={() => void handleLogout()} hasUnreadNotifications />
       <div className="app-layout">
         <Sidebar session={session} activeView={activeEntry.id} onSelect={navigate} onLogout={() => void handleLogout()} />
-        <main ref={mainRef} className="app-main">{inner}</main>
+        <main className="app-main">{inner}</main>
       </div>
     </div>
   )

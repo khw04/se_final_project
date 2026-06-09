@@ -1,10 +1,7 @@
 /* App shell — header + (logged-in) sidebar + content */
 
 .app-shell {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  height: 100svh;
-  overflow: hidden;
+  min-height: 100svh;
   padding: var(--space-5);
 }
 
@@ -124,23 +121,16 @@
 
 /* Logged-in layout */
 .app-layout {
-  align-items: stretch;
+  align-items: start;
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
   gap: var(--space-5);
-  min-height: 0;
   margin: var(--space-5) auto 0;
   max-width: var(--layout-notes);
-  width: 100%;
 }
 
 .app-main {
-  height: 100%;
-  min-height: 0;
   min-width: 0;
-  overflow-y: auto;
-  padding-right: var(--space-2);
-  scrollbar-gutter: stable;
 }
 
 .sidebar {
@@ -150,6 +140,8 @@
   border-radius: var(--radius-4);
   box-shadow: var(--shadow-card);
   padding: var(--space-5);
+  position: sticky;
+  top: var(--space-5);
 }
 
 .sidebar__user {
@@ -1703,23 +1695,8 @@
 
 /* Responsive */
 @media (max-width: 900px) {
-  .app-shell {
-    height: auto;
-    min-height: 100svh;
-    overflow: visible;
-  }
-
   .app-layout { grid-template-columns: 1fr; }
-
-  .app-main {
-    overflow: visible;
-    padding-right: 0;
-  }
-
-  .sidebar {
-    max-height: none;
-    overflow: visible;
-  }
+  .sidebar { position: static; }
 }
 
 @media (max-width: 560px) {
