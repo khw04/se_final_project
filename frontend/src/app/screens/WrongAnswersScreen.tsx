@@ -141,7 +141,12 @@ export function WrongAnswersScreen({ onOpenQuiz }: { onOpenQuiz?: (quizId: numbe
                     관련 개념: <strong>{w.concept}</strong> · 최근 시도: {relativeKo(w.lastMissedAt)}
                   </p>
                   <div className="wa-list__actions">
-                    <button type="button" className="surface__title-action" onClick={() => void retryWeakQuiz()} disabled={retrying}>
+                    <button
+                      type="button"
+                      className="surface__title-action"
+                      onClick={() => w.quizId != null ? onOpenQuiz?.(w.quizId) : void retryWeakQuiz()}
+                      disabled={retrying}
+                    >
                       다시 풀기
                     </button>
                     <button

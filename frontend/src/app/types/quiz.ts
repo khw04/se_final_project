@@ -37,6 +37,7 @@ export type WrongAnswerNote = {
   question: Question | null
   missCount: number
   lastAttemptId: number
+  quizId?: number
   lastMissedAt: string
   concept: string
 }

@@ -1,4 +1,4 @@
-export const TODAY = '2026-06-04T00:00:00Z'
+export const TODAY = new Date().toISOString()
 
 export const delay = (ms = 80) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
