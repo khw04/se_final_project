@@ -54,6 +54,13 @@ public class QuizController {
         return quizService.submitAttempt(userId, id, request);
     }
 
+    @PostMapping("/quizzes/{quizId}/questions/{questionId}/check")
+    public AnswerCheckResponse checkAnswer(@PathVariable long quizId, @PathVariable long questionId,
+            @RequestBody @Valid AnswerCheckRequest request, Principal principal) {
+        long userId = currentUserProvider.userId(principal);
+        return quizService.checkAnswer(userId, quizId, questionId, request);
+    }
+
     @GetMapping("/wrong-answers")
     public List<WrongAnswerResponse> getWrongAnswers(
             @RequestParam(defaultValue = "all") String type, Principal principal) {

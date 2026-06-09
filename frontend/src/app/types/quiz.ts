@@ -8,7 +8,7 @@ export type Question = {
   correctIndex?: number
   correctText?: string
   correctBool?: boolean
-  explanation: string
+  explanation?: string
   difficulty: 'easy' | 'medium' | 'hard'
   subjectId: number
   conceptTags: string[]

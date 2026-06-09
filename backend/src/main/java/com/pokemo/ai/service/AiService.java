@@ -30,8 +30,10 @@ import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
@@ -114,6 +116,8 @@ public class AiService {
         이전에 낸 문제와 같은 문장, 같은 수치, 같은 보기 조합을 반복하지 마라.
         문제 유형은 가능한 한 MCQ, SHORT, OX가 섞이게 하고, 개념 태그도 서로 다르게 배분해라.
         같은 개념을 묻더라도 상황, 조건, 표현, 오답 선택지를 바꿔 새 문제처럼 만들어라.
+        문제 text와 choices에는 정답을 직접 노출하지 마라.
+        explanation에는 정답 확인 후 볼 해설만 작성하고, 문제 풀이 전 힌트처럼 쓰지 마라.
         아래 변형 seed를 참고해 매번 다른 관점과 예시로 출제해라.
         변형 seed: %s
         최근 생성된 문제 목록:
@@ -126,7 +130,7 @@ public class AiService {
 
     try {
       JsonNode root = parseJson(aiClient.generateText(prompt));
-      QuizRequest request = toQuizRequest(root, note);
+      QuizRequest request = removeDuplicateQuestions(toQuizRequest(root, note), recentQuestionTextList(userId, noteId));
       return quizService.createAiQuiz(userId, noteId, request);
     } catch (AiClientException exception) {
       throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, exception.getMessage());
@@ -185,14 +189,56 @@ public class AiService {
   }
 
   private String recentQuestionTexts(long userId, long noteId) {
-    List<String> texts = quizRepository.findByCreatedByOrderByCreatedAtDesc(userId).stream()
+    List<String> texts = recentQuestionTextList(userId, noteId);
+    return texts.isEmpty() ? "- 없음" : texts.stream().map(text -> "- " + text).collect(Collectors.joining("\n"));
+  }
+
+  private List<String> recentQuestionTextList(long userId, long noteId) {
+    return quizRepository.findByCreatedByOrderByCreatedAtDesc(userId).stream()
         .filter(quiz -> quiz.generatedFromNoteId() != null && quiz.generatedFromNoteId().equals(noteId))
         .limit(5)
         .flatMap((Quiz quiz) -> quiz.quizQuestions().stream())
-        .map(quizQuestion -> "- " + quizQuestion.question().text())
+        .map(quizQuestion -> quizQuestion.question().text())
         .limit(20)
         .toList();
-    return texts.isEmpty() ? "- 없음" : String.join("\n", texts);
+  }
+
+  private QuizRequest removeDuplicateQuestions(QuizRequest request, List<String> recentTexts) {
+    Set<String> seen = new HashSet<>();
+    recentTexts.stream().map(this::normalizeQuestionText).forEach(seen::add);
+    List<QuestionRequest> filtered = new ArrayList<>();
+    for (QuestionRequest question : request.questions()) {
+      String normalized = normalizeQuestionText(question.text());
+      if (normalized.isBlank() || seen.contains(normalized)) {
+        continue;
+      }
+      boolean tooSimilar = seen.stream().anyMatch(existing -> isVerySimilar(existing, normalized));
+      if (tooSimilar) {
+        continue;
+      }
+      seen.add(normalized);
+      filtered.add(question);
+    }
+    if (filtered.isEmpty()) {
+      throw new AiClientException("AI가 기존 문제와 다른 새 문제를 생성하지 못했습니다.");
+    }
+    return new QuizRequest(request.title(), request.subjectId(), filtered);
+  }
+
+  private String normalizeQuestionText(String text) {
+    if (text == null) return "";
+    return text.toLowerCase()
+        .replaceAll("[^\\p{IsAlphabetic}\\p{IsDigit}\\s]", "")
+        .replaceAll("\\s+", " ")
+        .trim();
+  }
+
+  private boolean isVerySimilar(String left, String right) {
+    if (left.isBlank() || right.isBlank()) return false;
+    if (left.equals(right)) return true;
+    String shorter = left.length() <= right.length() ? left : right;
+    String longer = left.length() > right.length() ? left : right;
+    return shorter.length() >= 12 && longer.contains(shorter);
   }
 
   private QuestionRequest toQuestionRequest(JsonNode node, Long fallbackSubjectId) {

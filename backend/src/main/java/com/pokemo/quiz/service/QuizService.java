@@ -3,6 +3,8 @@ package com.pokemo.quiz.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pokemo.common.ApiException;
+import com.pokemo.quiz.api.AnswerCheckRequest;
+import com.pokemo.quiz.api.AnswerCheckResponse;
 import com.pokemo.quiz.api.AnswerRequest;
 import com.pokemo.quiz.api.AttemptRequest;
 import com.pokemo.quiz.api.AttemptResponse;
@@ -53,12 +55,12 @@ public class QuizService {
 
     public QuizResponse createQuiz(long userId, QuizRequest request) {
         Quiz quiz = createQuizEntity(userId, request, GeneratedBy.MANUAL, null);
-        return toQuizResponse(quizRepository.save(quiz));
+        return toQuizResponse(quizRepository.save(quiz), false);
     }
 
     public QuizResponse createAiQuiz(long userId, long noteId, QuizRequest request) {
         Quiz quiz = createQuizEntity(userId, request, GeneratedBy.AI_GEMINI, noteId);
-        return toQuizResponse(quizRepository.save(quiz));
+        return toQuizResponse(quizRepository.save(quiz), false);
     }
 
     private Quiz createQuizEntity(long userId, QuizRequest request, GeneratedBy generatedBy, Long noteId) {
@@ -88,13 +90,31 @@ public class QuizService {
     @Transactional(readOnly = true)
     public List<QuizResponse> listQuizzes(long userId) {
         return quizRepository.findByCreatedByOrderByCreatedAtDesc(userId)
-                .stream().map(this::toQuizResponse).toList();
+                .stream().map(quiz -> toQuizResponse(quiz, false)).toList();
     }
 
     @Transactional(readOnly = true)
     public QuizResponse getQuiz(long userId, long quizId) {
         Quiz quiz = findOwnedQuiz(userId, quizId);
-        return toQuizResponse(quiz);
+        return toQuizResponse(quiz, false);
+    }
+
+    @Transactional(readOnly = true)
+    public AnswerCheckResponse checkAnswer(long userId, long quizId, long questionId, AnswerCheckRequest request) {
+        Quiz quiz = findOwnedQuiz(userId, quizId);
+        Question question = quiz.quizQuestions().stream()
+                .map(QuizQuestion::question)
+                .filter(q -> q.id().equals(questionId))
+                .findFirst()
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "문제를 찾을 수 없습니다."));
+        boolean correct = checkAnswer(question, request.userAnswer());
+        return new AnswerCheckResponse(
+                question.id(),
+                correct,
+                question.correctIndex(),
+                question.correctText(),
+                question.correctBool(),
+                question.explanation());
     }
 
     public AttemptResponse submitAttempt(long userId, long quizId, AttemptRequest request) {
@@ -170,7 +190,7 @@ public class QuizService {
         for (int i = 0; i < questions.size(); i++) {
             quiz.addQuestion(questions.get(i), i);
         }
-        return toQuizResponse(quizRepository.save(quiz));
+        return toQuizResponse(quizRepository.save(quiz), false);
     }
 
     private Quiz findOwnedQuiz(long userId, long quizId) {
@@ -215,9 +235,9 @@ public class QuizService {
         };
     }
 
-    private QuizResponse toQuizResponse(Quiz quiz) {
+    private QuizResponse toQuizResponse(Quiz quiz, boolean includeAnswers) {
         List<QuestionResponse> questions = quiz.quizQuestions().stream()
-                .map(qq -> toQuestionResponse(qq.question()))
+                .map(qq -> toQuestionResponse(qq.question(), includeAnswers))
                 .toList();
         List<Long> questionIds = questions.stream().map(QuestionResponse::id).toList();
 
@@ -229,11 +249,15 @@ public class QuizService {
                 quiz.createdAt().toString());
     }
 
-    private QuestionResponse toQuestionResponse(Question q) {
+    private QuestionResponse toQuestionResponse(Question q, boolean includeAnswers) {
         return new QuestionResponse(
                 q.id(), q.type().name().toLowerCase(), q.text(),
-                fromJson(q.choicesJson()), q.correctIndex(), q.correctText(), q.correctBool(),
-                q.explanation(), q.difficulty().name().toLowerCase(),
+                fromJson(q.choicesJson()),
+                includeAnswers ? q.correctIndex() : null,
+                includeAnswers ? q.correctText() : null,
+                includeAnswers ? q.correctBool() : null,
+                includeAnswers ? q.explanation() : null,
+                q.difficulty().name().toLowerCase(),
                 q.subjectId(), fromJson(q.conceptTagsJson()), q.createdAt().toString());
     }
 
@@ -247,7 +271,7 @@ public class QuizService {
     private WrongAnswerResponse toWrongAnswerResponse(WrongAnswerNote note, Question q) {
         return new WrongAnswerResponse(
                 note.questionId(),
-                q != null ? toQuestionResponse(q) : null,
+                q != null ? toQuestionResponse(q, true) : null,
                 note.missCount(), note.lastAttemptId(),
                 note.lastMissedAt().toString(), note.concept());
     }
