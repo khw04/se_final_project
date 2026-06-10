@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from 'react'
 
+import { PasswordResetScreen } from '../app/screens/auth/PasswordResetScreen'
 import type { AuthSession, UserResponse } from '../lib/authApi'
 
 import {
@@ -35,6 +36,7 @@ export function AuthCard() {
   const [message, setMessage] = useState<AuthMessage | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCheckingUser, setIsCheckingUser] = useState(Boolean(session))
+  const [showReset, setShowReset] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -199,6 +201,8 @@ export function AuthCard() {
           <p className="auth-card__session-role">{currentUser?.role ?? session.role}</p>
           {isCheckingUser ? <p className="auth-card__hint">/api/auth/me에서 프로필을 새로 불러오는 중...</p> : null}
         </div>
+      ) : showReset ? (
+        <PasswordResetScreen onBack={() => setShowReset(false)} />
       ) : (
         <>
           <div className="auth-card__mode-toggle" role="tablist" aria-label="인증 모드">
@@ -272,6 +276,20 @@ export function AuthCard() {
               카카오로 로그인
             </button>
           </div>
+
+          {mode === 'login' ? (
+            <button
+              type="button"
+              className="auth-card__ghost-button"
+              style={{ marginTop: 12, alignSelf: 'flex-start' }}
+              onClick={() => {
+                setShowReset(true)
+                setMessage(null)
+              }}
+            >
+              비밀번호를 잊으셨나요?
+            </button>
+          ) : null}
         </>
       )}
 
