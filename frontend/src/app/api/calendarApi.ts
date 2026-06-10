@@ -1,4 +1,4 @@
-import type { CalendarEvent } from '../types'
+import type { CalendarEvent, RecurrenceRule } from '../types'
 
 import { apiFetch } from './client'
 import { calcDDay as calcDDayValue, relativeKo as relativeKoValue, TODAY } from './dateUtils'
@@ -20,6 +20,7 @@ export type CreateEventRequest = {
   endAt?: string
   allDay: boolean
   type: string
+  recurrence?: RecurrenceRule
   reminder?: string
 }
 
