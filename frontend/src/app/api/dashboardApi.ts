@@ -3,6 +3,7 @@ import type { DashboardPayload } from '../types'
 import { aiApi } from './aiApi'
 import { calendarApi } from './calendarApi'
 import { statsApi } from './statsApi'
+import { userApi } from './userApi'
 
 export const dashboardApi = {
   async getDashboard(): Promise<DashboardPayload> {
@@ -11,7 +12,8 @@ export const dashboardApi = {
     to.setDate(today.getDate() + 30)
     const fromStr = today.toISOString().slice(0, 10)
     const toStr = to.toISOString().slice(0, 10)
-    const [events, weeklyStudy, subjectProgress, accuracyTrend, recommend] = await Promise.all([
+    const [user, events, weeklyStudy, subjectProgress, accuracyTrend, recommend] = await Promise.all([
+      userApi.getMe(),
       calendarApi.getEvents({ from: fromStr, to: toStr }),
       statsApi.getWeeklyStudy(),
       statsApi.getSubjectProgress(),
@@ -23,7 +25,7 @@ export const dashboardApi = {
       .filter((event) => event.dDay >= 0)
       .slice(0, 4)
     return {
-      user: { id: 0, email: 'user@pokemo.local', role: 'USER', emailVerified: true, createdAt: '' },
+      user,
       upcomingExams,
       weeklyStudy,
       subjectProgress,

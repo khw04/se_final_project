@@ -12,18 +12,12 @@ import type {
   SubjectProgress,
   Tag,
   UpcomingSubject,
-  UserAccount,
   WeakConcept,
   WeeklyStudyPoint,
   WrongAnswerNote,
 } from '../types'
 
 import { calcDDay } from './dateUtils'
-
-export const MOCK_USERS: UserAccount[] = [
-  { id: 1, email: 'student@pokemo.dev', role: 'USER', emailVerified: true, createdAt: '2026-03-12T08:01:00Z' },
-  { id: 2, email: 'admin@pokemo.dev', role: 'ADMIN', emailVerified: true, createdAt: '2026-02-01T08:01:00Z' },
-]
 
 export const MOCK_SUBJECTS: Subject[] = [
   { id: 1, name: '미적분', color: '#243f6b' },
