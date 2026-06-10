@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 import { calendarApi } from '../api/calendarApi'
-import { subjectApi, subjectById } from '../api/subjectApi'
+import { subjectApi } from '../api/subjectApi'
 import { Icon } from '../components/Icon'
 import type { CalendarEvent } from '../types'
 import { useApi } from '../useApi'
@@ -40,6 +40,8 @@ export function CalendarScreen() {
     [year, month],
   )
   const { data: subjects } = useApi(() => subjectApi.getSubjects(), [])
+  const subjectMap = new Map((subjects ?? []).map((s) => [s.id, s] as const))
+  const findSubject = (id: number) => subjectMap.get(id)
 
   function prevMonth() {
     if (month === 1) { setYear(y => y - 1); setMonth(12) }
@@ -258,7 +260,7 @@ export function CalendarScreen() {
                   <span className="cal-cell__num">{cell.day}</span>
                   <div className="cal-cell__events">
                     {(dayMap[cell.day] || []).slice(0, 2).map((ev) => {
-                      const subject = subjectById(ev.subjectId)
+                      const subject = findSubject(ev.subjectId)
                       const tone = ev.type === 'exam' ? 'warning' : 'accent'
                       return (
                         <span
@@ -288,7 +290,7 @@ export function CalendarScreen() {
           ) : (
             <ul className="upcoming-list">
               {upcoming.map((event) => {
-                const subject = subjectById(event.subjectId)
+                const subject = findSubject(event.subjectId)
                 const tone = event.dDay <= 3 ? 'urgent' : 'normal'
                 const dateLabel = new Date(event.startAt).toLocaleDateString('ko-KR', {
                   month: 'long',
