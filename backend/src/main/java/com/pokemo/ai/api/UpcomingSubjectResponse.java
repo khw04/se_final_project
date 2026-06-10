@@ -3,7 +3,7 @@ package com.pokemo.ai.api;
 public record UpcomingSubjectResponse(
     Long subjectId,
     int dDay,
-    int accuracy,
+    Integer accuracy,
     int priorityScore,
     String label
 ) {
