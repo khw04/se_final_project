@@ -44,6 +44,13 @@ export type AccuracyTrendPoint = {
   accuracy: number
 }
 
+export type QuestionTypeAccuracy = {
+  type: 'MCQ' | 'SHORT' | 'OX'
+  accuracy: number
+  attempted: number
+  total: number
+}
+
 export type DashboardPayload = {
   user: UserAccount
   upcomingExams: CalendarEvent[]

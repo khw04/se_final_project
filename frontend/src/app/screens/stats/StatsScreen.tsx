@@ -1,14 +1,21 @@
 import { statsApi } from '../../api/statsApi'
 import { subjectById } from '../../api/subjectApi'
-import type { AccuracyTrendPoint, SubjectProgress, WeeklyStudyPoint } from '../../types'
+import type { AccuracyTrendPoint, QuestionTypeAccuracy, SubjectProgress, WeeklyStudyPoint } from '../../types'
 import { useApi } from '../../useApi'
+
+const TYPE_LABELS: Record<QuestionTypeAccuracy['type'], string> = {
+  MCQ: '객관식',
+  SHORT: '단답형',
+  OX: 'OX',
+}
 
 export function StatsScreen() {
   const { data: weekly, loading: weeklyLoading } = useApi(() => statsApi.getWeeklyStudy(), [])
   const { data: progress, loading: progressLoading } = useApi(() => statsApi.getSubjectProgress(), [])
   const { data: trend, loading: trendLoading } = useApi(() => statsApi.getAccuracyTrend(), [])
+  const { data: typeAccuracy, loading: typeAccuracyLoading } = useApi(() => statsApi.getTypeAccuracy(), [])
 
-  const loading = weeklyLoading || progressLoading || trendLoading
+  const loading = weeklyLoading || progressLoading || trendLoading || typeAccuracyLoading
 
   return (
     <div className="screen">
@@ -27,6 +34,7 @@ export function StatsScreen() {
             <AccuracyTrendChart data={trend ?? []} />
           </div>
           <SubjectProgressChart data={progress ?? []} />
+          <TypeAccuracyChart data={typeAccuracy ?? []} />
         </div>
       )}
     </div>
@@ -125,6 +133,48 @@ function SubjectProgressChart({ data }: { data: SubjectProgress[] }) {
               </div>
             )
           })}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function TypeAccuracyChart({ data }: { data: QuestionTypeAccuracy[] }) {
+  const hasAttempts = data.some((d) => d.attempted > 0)
+
+  return (
+    <section className="surface">
+      <div className="surface__title">
+        <h2>유형별 정답률</h2>
+        <span className="tag">객관식 · 단답형 · OX</span>
+      </div>
+      {!hasAttempts ? (
+        <p className="muted-note" style={{ textAlign: 'center', padding: 32 }}>
+          아직 풀이한 퀴즈가 없습니다.
+        </p>
+      ) : (
+        <div style={{ display: 'grid', gap: 16, marginTop: 8 }}>
+          {data.map((d) => (
+            <div key={d.type}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>{TYPE_LABELS[d.type]}</span>
+                <span style={{ fontSize: 14, color: 'var(--color-muted)' }}>
+                  {d.accuracy}% · {d.attempted}문제
+                </span>
+              </div>
+              <div style={{ height: 8, background: 'var(--color-surface-alt, #eef2f8)', borderRadius: 4, overflow: 'hidden' }}>
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${d.accuracy}%`,
+                    background: 'var(--color-accent, #4673b3)',
+                    borderRadius: 4,
+                    transition: 'width 0.4s ease',
+                  }}
+                />
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </section>
