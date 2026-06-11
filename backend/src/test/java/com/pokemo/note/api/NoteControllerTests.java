@@ -39,11 +39,13 @@ class NoteControllerTests {
     noteRepository.deleteAll();
     authTokenRepository.deleteAll();
     userAccountRepository.deleteAll();
-    userAccountRepository.save(new UserAccount(
+    UserAccount user = new UserAccount(
         "test@pokemo.dev",
         passwordEncoder.encode("pass1234"),
         UserRole.USER
-    ));
+    );
+    user.markEmailVerified();
+    userAccountRepository.save(user);
   }
 
   @Test
