@@ -33,7 +33,7 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-}
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
-      CORS_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:8081,http://127.0.0.1:8081
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8081,http://127.0.0.1:8081}
     ports:
       - "8080:8080"
     depends_on:
@@ -50,7 +50,7 @@ services:
         VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
         VITE_KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-}
     ports:
-      - "8081:80"
+      - "${FRONTEND_PORT:-8081}:80"
     depends_on:
       - backend
 
