@@ -20,4 +20,10 @@ public interface CalendarEventRepository extends JpaRepository<CalendarEvent, Lo
   );
 
   List<CalendarEvent> findByUserIdOrderByStartAtAsc(Long userId);
+
+  List<CalendarEvent> findByReminderAndStartAtBetween(
+      String reminder,
+      OffsetDateTime from,
+      OffsetDateTime to
+  );
 }
