@@ -13,6 +13,13 @@ const EVENT_TYPES = [
   { value: 'other', label: '기타' },
 ]
 
+const REMINDER_OPTIONS = [
+  { value: '', label: '안 함' },
+  { value: '15m', label: '15분 전' },
+  { value: '1h', label: '1시간 전' },
+  { value: '1d', label: '1일 전' },
+]
+
 function pad(n: number) {
   return String(n).padStart(2, '0')
 }
@@ -26,6 +33,7 @@ export function CalendarScreen() {
   const [formDate, setFormDate] = useState(`${todayDate.getFullYear()}-${pad(todayDate.getMonth() + 1)}-${pad(todayDate.getDate())}`)
   const [formType, setFormType] = useState('other')
   const [formSubjectId, setFormSubjectId] = useState<string>('')
+  const [formReminder, setFormReminder] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
@@ -62,11 +70,13 @@ export function CalendarScreen() {
         startAt: `${formDate}T09:00:00+09:00`,
         allDay: false,
         type: formType,
+        reminder: formReminder || undefined,
       })
       setShowAddForm(false)
       setFormTitle('')
       setFormType('other')
       setFormSubjectId('')
+      setFormReminder('')
       refetch()
     } finally {
       setSubmitting(false)
@@ -198,6 +208,19 @@ export function CalendarScreen() {
                 </select>
               </div>
             )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 13, color: 'var(--color-text)' }}>알림 시점</label>
+              <select
+                style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14 }}
+                value={formReminder}
+                onChange={(e) => setFormReminder(e.target.value)}
+              >
+                {REMINDER_OPTIONS.map((r) => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
+            </div>
 
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
               <button
