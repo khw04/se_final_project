@@ -12,7 +12,7 @@ export type WeakConcept = {
 export type UpcomingSubject = {
   subjectId: number
   dDay: number
-  accuracy: number
+  accuracy: number | null
   priorityScore: number
 }
 
@@ -21,7 +21,7 @@ export type PriorityRecommendation = {
   subjectId: number
   reason: string
   dDay?: number
-  accuracy: number
+  accuracy: number | null
   tone: 'urgent' | 'warning' | 'normal'
 }
 

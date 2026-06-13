@@ -1,8 +1,25 @@
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api').replace(/\/+$/, '')
 
-export const apiHealthPlaceholder = {
-  endpoint: `${apiBaseUrl}/actuator/health`,
-  statusLabel: '백엔드 상태 확인 엔드포인트 대기 중',
-  description:
-    '백엔드 기본 구조가 준비되면 Spring Boot 상태 확인 결과를 이 카드에 표시합니다.',
-} as const
+export const apiHealthEndpoint = `${apiBaseUrl}/health`
+
+export type ApiHealthStatus = {
+  state: 'ok' | 'down'
+  status: string
+  checkedAt: string
+}
+
+export async function fetchApiHealth(): Promise<ApiHealthStatus> {
+  const response = await fetch(apiHealthEndpoint, { headers: { Accept: 'application/json' } })
+
+  if (!response.ok) {
+    throw new Error(`상태 확인 실패 (status ${response.status})`)
+  }
+
+  const body = (await response.json()) as { status?: string; timestamp?: string }
+
+  return {
+    state: 'ok',
+    status: body.status ?? 'UP',
+    checkedAt: body.timestamp ?? new Date().toISOString(),
+  }
+}

@@ -155,7 +155,7 @@ export function AppShell({ session }: AppShellProps) {
 
   return (
     <div className="app-shell">
-      <AppHeader session={session} onHome={() => navigate('dashboard')} onLogout={() => void handleLogout()} hasUnreadNotifications />
+      <AppHeader session={session} onHome={() => navigate('dashboard')} onLogout={() => void handleLogout()} />
       <div className="app-layout">
         <Sidebar session={session} activeView={activeEntry.id} onSelect={navigate} onLogout={() => void handleLogout()} />
         <main className="app-main">{inner}</main>

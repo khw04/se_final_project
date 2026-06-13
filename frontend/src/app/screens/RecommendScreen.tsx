@@ -97,7 +97,7 @@ function PriorityRail({ items }: { items: PriorityRecommendation[] }) {
                 {item.dDay != null ? (
                   <span className={`dday ${item.tone === 'urgent' ? 'dday--urgent' : ''}`}>D-{item.dDay}</span>
                 ) : null}
-                <span className="priority-row__rate">{item.accuracy}%</span>
+                <span className="priority-row__rate">{item.accuracy == null ? '–' : `${item.accuracy}%`}</span>
               </div>
               <button type="button" className="priority-row__cta" aria-label="학습 시작">
                 <Icon name="arrowRight" size={16} />
@@ -190,7 +190,7 @@ function UpcomingSubjectCard({ subjects }: { subjects: UpcomingSubject[] }) {
               <div>
                 <p className="upcoming-subjects__name">{meta?.name}</p>
                 <p className="upcoming-subjects__meta">
-                  D-{subject.dDay} · 정답률 {subject.accuracy}%
+                  D-{subject.dDay} · 정답률 {subject.accuracy == null ? '–' : `${subject.accuracy}%`}
                 </p>
               </div>
               <div className="urgency-bar">
