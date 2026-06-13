@@ -37,4 +37,10 @@ public class StatsController {
         long userId = currentUserProvider.userId(principal);
         return statsService.getWeeklyStudy(userId);
     }
+
+    @GetMapping("/type-accuracy")
+    public List<TypeAccuracyResponse> getTypeAccuracy(Principal principal) {
+        long userId = currentUserProvider.userId(principal);
+        return statsService.getTypeAccuracy(userId);
+    }
 }

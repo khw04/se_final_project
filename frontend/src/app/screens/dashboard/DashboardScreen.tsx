@@ -3,6 +3,7 @@ import type { AuthSession } from '../../../lib/authApi'
 import { dashboardApi } from '../../api/dashboardApi'
 import { subjectApi, subjectById } from '../../api/subjectApi'
 import { Icon } from '../../components/Icon'
+import { PushNotificationCard } from '../../components/PushNotificationCard'
 import type { StudyTimerState } from '../../nav/types'
 import type {
   AccuracyTrendPoint,
@@ -89,6 +90,7 @@ export function DashboardScreen({ session, onJumpTo, studyTimer }: Props) {
         <StudyTimerCard subjects={subjects ?? []} timer={studyTimer} />
         <QuizTrendCard points={data.accuracyTrend} />
         <AiRecommendCard items={data.recommendation} onRefresh={refetch} />
+        <PushNotificationCard />
       </div>
     </div>
   )

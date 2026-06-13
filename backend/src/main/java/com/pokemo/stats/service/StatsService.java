@@ -1,5 +1,8 @@
 package com.pokemo.stats.service;
 
+import com.pokemo.quiz.domain.AttemptAnswer;
+import com.pokemo.quiz.domain.Question;
+import com.pokemo.quiz.domain.QuestionType;
 import com.pokemo.quiz.domain.Quiz;
 import com.pokemo.quiz.domain.QuizAttempt;
 import com.pokemo.quiz.repository.QuestionRepository;
@@ -7,9 +10,11 @@ import com.pokemo.quiz.repository.QuizAttemptRepository;
 import com.pokemo.quiz.repository.QuizRepository;
 import com.pokemo.stats.api.AccuracyTrendResponse;
 import com.pokemo.stats.api.SubjectProgressResponse;
+import com.pokemo.stats.api.TypeAccuracyResponse;
 import com.pokemo.stats.api.WeeklyStudyResponse;
 import com.pokemo.study.repository.StudySessionRepository;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -83,6 +88,51 @@ public class StatsService {
                     int accuracy = s.attempted() > 0 ? (int) Math.round((double) s.correct() / s.attempted() * 100) : 0;
                     int total = Math.max(s.attempted(), totalBySubject.getOrDefault(e.getKey(), s.attempted()));
                     return new SubjectProgressResponse(e.getKey(), accuracy, s.attempted(), total);
+                })
+                .toList();
+    }
+
+    public List<TypeAccuracyResponse> getTypeAccuracy(long userId) {
+        List<QuizAttempt> attempts = attemptRepository.findByUserIdOrderByStartedAtDesc(userId).stream()
+                .filter(a -> a.completedAt() != null)
+                .toList();
+        if (attempts.isEmpty()) return List.of();
+
+        List<AttemptAnswer> allAnswers = attempts.stream()
+                .flatMap(a -> a.answers().stream())
+                .toList();
+
+        Map<Long, QuestionType> questionTypeById = questionRepository
+                .findAllById(allAnswers.stream().map(AttemptAnswer::questionId).distinct().toList())
+                .stream().collect(Collectors.toMap(Question::id, Question::type));
+
+        record TypeStat(int attempted, int correct) {}
+
+        Map<QuestionType, TypeStat> statByType = allAnswers.stream()
+                .filter(a -> questionTypeById.containsKey(a.questionId()))
+                .collect(Collectors.groupingBy(
+                        a -> questionTypeById.get(a.questionId()),
+                        Collectors.collectingAndThen(
+                                Collectors.toList(),
+                                list -> new TypeStat(
+                                        list.size(),
+                                        (int) list.stream().filter(AttemptAnswer::correct).count()
+                                )
+                        )
+                ));
+
+        Map<QuestionType, Integer> totalByType = questionRepository.findByCreatedBy(userId).stream()
+                .collect(Collectors.groupingBy(
+                        Question::type,
+                        Collectors.collectingAndThen(Collectors.counting(), Long::intValue)
+                ));
+
+        return Arrays.stream(QuestionType.values())
+                .map(type -> {
+                    TypeStat s = statByType.getOrDefault(type, new TypeStat(0, 0));
+                    int accuracy = s.attempted() > 0 ? (int) Math.round((double) s.correct() / s.attempted() * 100) : 0;
+                    int total = Math.max(s.attempted(), totalByType.getOrDefault(type, s.attempted()));
+                    return new TypeAccuracyResponse(type.name(), accuracy, s.attempted(), total);
                 })
                 .toList();
     }

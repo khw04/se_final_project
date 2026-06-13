@@ -62,11 +62,13 @@ class AuthControllerTests {
 
   @Test
   void loginReturnsTokens() throws Exception {
-    userAccountRepository.save(new UserAccount(
+    UserAccount verifiedUser = new UserAccount(
         "student@example.com",
         passwordEncoder.encode("password123"),
         UserRole.USER
-    ));
+    );
+    verifiedUser.markEmailVerified();
+    userAccountRepository.save(verifiedUser);
 
     mockMvc.perform(post("/api/auth/login")
             .contentType(MediaType.APPLICATION_JSON)
@@ -81,11 +83,13 @@ class AuthControllerTests {
 
   @Test
   void refreshReturnsNewAccessTokenForStoredRefreshToken() throws Exception {
-    userAccountRepository.save(new UserAccount(
+    UserAccount verifiedUser = new UserAccount(
         "student@example.com",
         passwordEncoder.encode("password123"),
         UserRole.USER
-    ));
+    );
+    verifiedUser.markEmailVerified();
+    userAccountRepository.save(verifiedUser);
 
     MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
             .contentType(MediaType.APPLICATION_JSON)
@@ -108,11 +112,13 @@ class AuthControllerTests {
 
   @Test
   void meReturnsCurrentUserForAccessToken() throws Exception {
-    userAccountRepository.save(new UserAccount(
+    UserAccount verifiedUser = new UserAccount(
         "student@example.com",
         passwordEncoder.encode("password123"),
         UserRole.USER
-    ));
+    );
+    verifiedUser.markEmailVerified();
+    userAccountRepository.save(verifiedUser);
 
     MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
             .contentType(MediaType.APPLICATION_JSON)
@@ -143,11 +149,13 @@ class AuthControllerTests {
 
   @Test
   void loginReturnsUnauthorizedForWrongPassword() throws Exception {
-    userAccountRepository.save(new UserAccount(
+    UserAccount verifiedUser = new UserAccount(
         "student@example.com",
         passwordEncoder.encode("password123"),
         UserRole.USER
-    ));
+    );
+    verifiedUser.markEmailVerified();
+    userAccountRepository.save(verifiedUser);
 
     mockMvc.perform(post("/api/auth/login")
             .contentType(MediaType.APPLICATION_JSON)
@@ -160,11 +168,13 @@ class AuthControllerTests {
 
   @Test
   void logoutRevokesRefreshToken() throws Exception {
-    userAccountRepository.save(new UserAccount(
+    UserAccount verifiedUser = new UserAccount(
         "student@example.com",
         passwordEncoder.encode("password123"),
         UserRole.USER
-    ));
+    );
+    verifiedUser.markEmailVerified();
+    userAccountRepository.save(verifiedUser);
 
     MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
             .contentType(MediaType.APPLICATION_JSON)
@@ -188,6 +198,23 @@ class AuthControllerTests {
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"refreshToken\":\"" + refreshToken + "\"}"))
         .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void loginReturnsForbiddenForUnverifiedEmail() throws Exception {
+    userAccountRepository.save(new UserAccount(
+        "student@example.com",
+        passwordEncoder.encode("password123"),
+        UserRole.USER
+    ));
+
+    mockMvc.perform(post("/api/auth/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"email":"student@example.com","password":"password123"}
+                """))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.status").value(403));
   }
 
   @Test

@@ -49,11 +49,13 @@ class PasswordResetControllerTests {
   }
 
   private void saveUser() {
-    userAccountRepository.save(new UserAccount(
+    UserAccount user = new UserAccount(
         "student@example.com",
         passwordEncoder.encode("oldpassword"),
         UserRole.USER
-    ));
+    );
+    user.markEmailVerified();
+    userAccountRepository.save(user);
   }
 
   @Test

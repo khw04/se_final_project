@@ -24,17 +24,20 @@ public class AuthService {
   private final AuthTokenRepository authTokenRepository;
   private final PasswordEncoder passwordEncoder;
   private final JwtTokenService jwtTokenService;
+  private final EmailVerificationService emailVerificationService;
 
   public AuthService(
       UserAccountRepository userAccountRepository,
       AuthTokenRepository authTokenRepository,
       PasswordEncoder passwordEncoder,
-      JwtTokenService jwtTokenService
+      JwtTokenService jwtTokenService,
+      EmailVerificationService emailVerificationService
   ) {
     this.userAccountRepository = userAccountRepository;
     this.authTokenRepository = authTokenRepository;
     this.passwordEncoder = passwordEncoder;
     this.jwtTokenService = jwtTokenService;
+    this.emailVerificationService = emailVerificationService;
   }
 
   @Transactional
@@ -45,7 +48,9 @@ public class AuthService {
     }
 
     UserAccount user = new UserAccount(email, passwordEncoder.encode(request.password()), UserRole.USER);
-    return UserResponse.from(userAccountRepository.save(user));
+    UserResponse response = UserResponse.from(userAccountRepository.save(user));
+    emailVerificationService.requestCode(email);
+    return response;
   }
 
   @Transactional
@@ -56,6 +61,10 @@ public class AuthService {
 
     if (user.passwordHash() == null || !passwordEncoder.matches(request.password(), user.passwordHash())) {
       throw new AuthException(HttpStatus.UNAUTHORIZED, "비밀번호가 일치하지 않습니다");
+    }
+
+    if (!user.emailVerified()) {
+      throw new AuthException(HttpStatus.FORBIDDEN, "이메일 인증이 필요합니다. 가입 시 받은 인증 코드를 확인해주세요.");
     }
 
     return issueTokens(user);

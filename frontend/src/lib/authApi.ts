@@ -143,6 +143,32 @@ export function getCurrentUser(accessToken: string, tokenType = 'Bearer') {
   })
 }
 
+export function requestEmailVerification(email: string) {
+  if (mockAuthMode) {
+    return Promise.resolve<null>(null)
+  }
+  return requestJson<null>('/auth/email/verify-request', {
+    body: JSON.stringify({ email }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  })
+}
+
+export function confirmEmailVerification(email: string, code: string) {
+  if (mockAuthMode) {
+    return Promise.resolve<null>(null)
+  }
+  return requestJson<null>('/auth/email/verify', {
+    body: JSON.stringify({ email, code }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  })
+}
+
 export function requestPasswordReset(email: string) {
   if (mockAuthMode) {
     return Promise.resolve<null>(null)

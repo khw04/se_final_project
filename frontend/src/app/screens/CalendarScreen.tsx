@@ -13,6 +13,13 @@ const EVENT_TYPES = [
   { value: 'other', label: '기타' },
 ]
 
+const REMINDER_OPTIONS = [
+  { value: '', label: '안 함' },
+  { value: '15m', label: '15분 전' },
+  { value: '1h', label: '1시간 전' },
+  { value: '1d', label: '1일 전' },
+]
+
 // byweekday는 표시 로직(getUTCDay)과 동일하게 0=일 ~ 6=토 규칙을 사용한다.
 const WEEKDAYS = [
   { value: 1, label: '월' },
@@ -39,6 +46,7 @@ export function CalendarScreen() {
   const [formDate, setFormDate] = useState(`${todayDate.getFullYear()}-${pad(todayDate.getMonth() + 1)}-${pad(todayDate.getDate())}`)
   const [formType, setFormType] = useState('other')
   const [formSubjectId, setFormSubjectId] = useState<string>('')
+  const [formReminder, setFormReminder] = useState('')
   const [formRepeat, setFormRepeat] = useState<RepeatMode>('none')
   const [formWeekdays, setFormWeekdays] = useState<number[]>([])
   const [submitting, setSubmitting] = useState(false)
@@ -87,12 +95,14 @@ export function CalendarScreen() {
         startAt,
         allDay: false,
         type: formType,
+        reminder: formReminder || undefined,
         recurrence,
       })
       setShowAddForm(false)
       setFormTitle('')
       setFormType('other')
       setFormSubjectId('')
+      setFormReminder('')
       setFormRepeat('none')
       setFormWeekdays([])
       refetch()
@@ -226,6 +236,19 @@ export function CalendarScreen() {
                 </select>
               </div>
             )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 13, color: 'var(--color-text)' }}>알림 시점</label>
+              <select
+                style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14 }}
+                value={formReminder}
+                onChange={(e) => setFormReminder(e.target.value)}
+              >
+                {REMINDER_OPTIONS.map((r) => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
+            </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: 13, color: 'var(--color-text)' }}>반복</label>

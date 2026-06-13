@@ -53,8 +53,10 @@ class QuizControllerTests {
         authTokenRepository.deleteAll();
         userAccountRepository.deleteAll();
 
-        userAccountRepository.save(new UserAccount(
-                "quiz@test.com", passwordEncoder.encode("pass1234"), UserRole.USER));
+        UserAccount user = new UserAccount(
+                "quiz@test.com", passwordEncoder.encode("pass1234"), UserRole.USER);
+        user.markEmailVerified();
+        userAccountRepository.save(user);
 
         MvcResult login = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
