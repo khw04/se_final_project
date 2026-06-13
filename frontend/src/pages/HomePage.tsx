@@ -1,4 +1,3 @@
-import { ApiHealthCard } from '../components/ApiHealthCard'
 import { AuthCard } from '../components/AuthCard'
 import './HomePage.css'
 
@@ -21,7 +20,6 @@ export function HomePage() {
       </div>
       <div className="home-page__sidebar">
         <AuthCard />
-        <ApiHealthCard />
       </div>
     </section>
   )
