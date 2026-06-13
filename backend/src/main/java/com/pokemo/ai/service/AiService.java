@@ -25,6 +25,8 @@ import com.pokemo.quiz.repository.QuizAttemptRepository;
 import com.pokemo.quiz.repository.QuizRepository;
 import com.pokemo.quiz.repository.WrongAnswerNoteRepository;
 import com.pokemo.quiz.service.QuizService;
+import com.pokemo.stats.api.SubjectProgressResponse;
+import com.pokemo.stats.service.StatsService;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
@@ -53,6 +55,7 @@ public class AiService {
   private final WrongAnswerNoteRepository wrongAnswerNoteRepository;
   private final CalendarEventRepository calendarEventRepository;
   private final QuizAttemptRepository quizAttemptRepository;
+  private final StatsService statsService;
 
   public AiService(
       AiClient aiClient,
@@ -63,7 +66,8 @@ public class AiService {
       QuestionRepository questionRepository,
       WrongAnswerNoteRepository wrongAnswerNoteRepository,
       CalendarEventRepository calendarEventRepository,
-      QuizAttemptRepository quizAttemptRepository
+      QuizAttemptRepository quizAttemptRepository,
+      StatsService statsService
   ) {
     this.aiClient = aiClient;
     this.objectMapper = objectMapper;
@@ -74,6 +78,7 @@ public class AiService {
     this.wrongAnswerNoteRepository = wrongAnswerNoteRepository;
     this.calendarEventRepository = calendarEventRepository;
     this.quizAttemptRepository = quizAttemptRepository;
+    this.statsService = statsService;
   }
 
   @Transactional(readOnly = true)
@@ -140,10 +145,22 @@ public class AiService {
 
   @Transactional(readOnly = true)
   public RecommendResponse recommend(long userId) {
+    Map<Long, Integer> accuracyBySubject = accuracyBySubject(userId);
     List<WeakConceptResponse> weakConcepts = weakConcepts(userId);
-    List<UpcomingSubjectResponse> upcomingSubjects = upcomingSubjects(userId);
-    List<PriorityRecommendationResponse> priorities = priorities(userId, weakConcepts, upcomingSubjects);
+    List<UpcomingSubjectResponse> upcomingSubjects = upcomingSubjects(userId, accuracyBySubject);
+    List<PriorityRecommendationResponse> priorities =
+        priorities(userId, weakConcepts, upcomingSubjects, accuracyBySubject);
     return new RecommendResponse(priorities, weakConcepts, upcomingSubjects, true);
+  }
+
+  // 과목별 실제 정답률(StatsService 집계)을 subjectId -> accuracy 맵으로 만든다.
+  // 풀이 기록이 없는 과목은 맵에 없으며, 호출부에서 null(정답률 미산정)로 처리한다.
+  private Map<Long, Integer> accuracyBySubject(long userId) {
+    return statsService.getSubjectProgress(userId).stream()
+        .collect(Collectors.toMap(
+            SubjectProgressResponse::subjectId,
+            SubjectProgressResponse::accuracy,
+            (left, right) -> left));
   }
 
   private Note findOwnedNote(long userId, long noteId) {
@@ -288,15 +305,16 @@ public class AiService {
         .toList();
   }
 
-  private List<UpcomingSubjectResponse> upcomingSubjects(long userId) {
+  private List<UpcomingSubjectResponse> upcomingSubjects(long userId, Map<Long, Integer> accuracyBySubject) {
     LocalDate today = LocalDate.now();
     return calendarEventRepository.findByUserIdOrderByStartAtAsc(userId).stream()
         .filter(event -> !event.startAt().toLocalDate().isBefore(today))
         .limit(5)
         .map(event -> {
           int dDay = (int) ChronoUnit.DAYS.between(today, event.startAt().toLocalDate());
+          Integer accuracy = event.subjectId() == null ? null : accuracyBySubject.get(event.subjectId());
           int priorityScore = Math.max(20, Math.min(100, 100 - dDay * 10));
-          return new UpcomingSubjectResponse(event.subjectId(), dDay, 60, priorityScore, event.title());
+          return new UpcomingSubjectResponse(event.subjectId(), dDay, accuracy, priorityScore, event.title());
         })
         .toList();
   }
@@ -304,7 +322,8 @@ public class AiService {
   private List<PriorityRecommendationResponse> priorities(
       long userId,
       List<WeakConceptResponse> weakConcepts,
-      List<UpcomingSubjectResponse> upcomingSubjects
+      List<UpcomingSubjectResponse> upcomingSubjects,
+      Map<Long, Integer> accuracyBySubject
   ) {
     List<PriorityRecommendationResponse> result = new ArrayList<>();
     upcomingSubjects.stream()
@@ -313,11 +332,12 @@ public class AiService {
         .forEach(item -> result.add(new PriorityRecommendationResponse(result.size() + 1,
             item.subjectId(), "시험·과제 일정이 임박했습니다: " + item.label(), item.dDay(), item.accuracy(), item.dDay() <= 3 ? "urgent" : "warning")));
     weakConcepts.stream().limit(2).forEach(item -> result.add(new PriorityRecommendationResponse(result.size() + 1,
-        item.subjectId(), "오답이 누적된 개념을 복습하세요: " + item.concept(), null, 50, "warning")));
+        item.subjectId(), "오답이 누적된 개념을 복습하세요: " + item.concept(), null,
+        item.subjectId() == null ? null : accuracyBySubject.get(item.subjectId()), "warning")));
     if (result.isEmpty()) {
       int solved = quizAttemptRepository.findByUserIdOrderByStartedAtDesc(userId).size();
       result.add(new PriorityRecommendationResponse(1, null,
-          solved > 0 ? "최근 퀴즈 정답률을 유지하기 위해 새 문제를 풀어보세요." : "노트를 작성하고 첫 퀴즈를 생성해보세요.", null, 0, "normal"));
+          solved > 0 ? "최근 퀴즈 정답률을 유지하기 위해 새 문제를 풀어보세요." : "노트를 작성하고 첫 퀴즈를 생성해보세요.", null, null, "normal"));
     }
     return result;
   }

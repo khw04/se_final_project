@@ -12,9 +12,9 @@ import {
 type Step = 'request' | 'reset' | 'done'
 type Feedback = { tone: 'success' | 'error' | 'muted'; text: string }
 
-export function PasswordResetScreen({ session }: { session: AuthSession }) {
+export function PasswordResetScreen({ session, onBack }: { session?: AuthSession; onBack?: () => void }) {
   const [step, setStep] = useState<Step>('request')
-  const [email, setEmail] = useState(session.email)
+  const [email, setEmail] = useState(session?.email ?? '')
   const [token, setToken] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -94,6 +94,11 @@ export function PasswordResetScreen({ session }: { session: AuthSession }) {
         <p className="screen__lede">
           가입한 이메일로 재설정 토큰을 받은 뒤, 토큰과 새 비밀번호를 입력해 변경합니다.
         </p>
+        {onBack ? (
+          <button type="button" className="surface__title-action" onClick={onBack} style={{ marginTop: 8 }}>
+            ← 로그인으로 돌아가기
+          </button>
+        ) : null}
       </header>
 
       {feedback ? (

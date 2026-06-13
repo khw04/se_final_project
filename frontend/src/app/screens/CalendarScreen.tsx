@@ -1,9 +1,9 @@
 import { useState } from 'react'
 
 import { calendarApi } from '../api/calendarApi'
-import { subjectApi, subjectById } from '../api/subjectApi'
+import { subjectApi } from '../api/subjectApi'
 import { Icon } from '../components/Icon'
-import type { CalendarEvent } from '../types'
+import type { CalendarEvent, RecurrenceRule } from '../types'
 import { useApi } from '../useApi'
 
 const EVENT_TYPES = [
@@ -20,6 +20,19 @@ const REMINDER_OPTIONS = [
   { value: '1d', label: '1일 전' },
 ]
 
+// byweekday는 표시 로직(getUTCDay)과 동일하게 0=일 ~ 6=토 규칙을 사용한다.
+const WEEKDAYS = [
+  { value: 1, label: '월' },
+  { value: 2, label: '화' },
+  { value: 3, label: '수' },
+  { value: 4, label: '목' },
+  { value: 5, label: '금' },
+  { value: 6, label: '토' },
+  { value: 0, label: '일' },
+]
+
+type RepeatMode = 'none' | 'weekly' | 'monthly'
+
 function pad(n: number) {
   return String(n).padStart(2, '0')
 }
@@ -34,6 +47,8 @@ export function CalendarScreen() {
   const [formType, setFormType] = useState('other')
   const [formSubjectId, setFormSubjectId] = useState<string>('')
   const [formReminder, setFormReminder] = useState('')
+  const [formRepeat, setFormRepeat] = useState<RepeatMode>('none')
+  const [formWeekdays, setFormWeekdays] = useState<number[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
@@ -48,6 +63,8 @@ export function CalendarScreen() {
     [year, month],
   )
   const { data: subjects } = useApi(() => subjectApi.getSubjects(), [])
+  const subjectMap = new Map((subjects ?? []).map((s) => [s.id, s] as const))
+  const findSubject = (id: number) => subjectMap.get(id)
 
   function prevMonth() {
     if (month === 1) { setYear(y => y - 1); setMonth(12) }
@@ -64,19 +81,30 @@ export function CalendarScreen() {
     if (!formTitle.trim() || !formDate) return
     setSubmitting(true)
     try {
+      const startAt = `${formDate}T09:00:00+09:00`
+      let recurrence: RecurrenceRule | undefined
+      if (formRepeat === 'weekly') {
+        const days = formWeekdays.length > 0 ? [...formWeekdays].sort((a, b) => a - b) : [new Date(startAt).getUTCDay()]
+        recurrence = { freq: 'weekly', interval: 1, byweekday: days, endMode: 'never' }
+      } else if (formRepeat === 'monthly') {
+        recurrence = { freq: 'monthly', interval: 1, endMode: 'never' }
+      }
       await calendarApi.createEvent({
         title: formTitle.trim(),
         subjectId: formSubjectId ? Number(formSubjectId) : null,
-        startAt: `${formDate}T09:00:00+09:00`,
+        startAt,
         allDay: false,
         type: formType,
         reminder: formReminder || undefined,
+        recurrence,
       })
       setShowAddForm(false)
       setFormTitle('')
       setFormType('other')
       setFormSubjectId('')
       setFormReminder('')
+      setFormRepeat('none')
+      setFormWeekdays([])
       refetch()
     } finally {
       setSubmitting(false)
@@ -222,6 +250,53 @@ export function CalendarScreen() {
               </select>
             </div>
 
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 13, color: 'var(--color-text)' }}>반복</label>
+              <select
+                style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14 }}
+                value={formRepeat}
+                onChange={(e) => setFormRepeat(e.target.value as RepeatMode)}
+              >
+                <option value="none">반복 안 함</option>
+                <option value="weekly">매주</option>
+                <option value="monthly">매월</option>
+              </select>
+            </div>
+
+            {formRepeat === 'weekly' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: 13, color: 'var(--color-text)' }}>반복 요일 (미선택 시 시작 요일)</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {WEEKDAYS.map((d) => {
+                    const active = formWeekdays.includes(d.value)
+                    return (
+                      <button
+                        key={d.value}
+                        type="button"
+                        onClick={() =>
+                          setFormWeekdays((prev) =>
+                            active ? prev.filter((v) => v !== d.value) : [...prev, d.value],
+                          )
+                        }
+                        style={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: 8,
+                          border: '1px solid var(--color-border)',
+                          background: active ? 'var(--color-accent)' : 'transparent',
+                          color: active ? '#fff' : 'var(--color-text)',
+                          fontSize: 13,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {d.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
               <button
                 type="button"
@@ -281,7 +356,7 @@ export function CalendarScreen() {
                   <span className="cal-cell__num">{cell.day}</span>
                   <div className="cal-cell__events">
                     {(dayMap[cell.day] || []).slice(0, 2).map((ev) => {
-                      const subject = subjectById(ev.subjectId)
+                      const subject = findSubject(ev.subjectId)
                       const tone = ev.type === 'exam' ? 'warning' : 'accent'
                       return (
                         <span
@@ -311,7 +386,7 @@ export function CalendarScreen() {
           ) : (
             <ul className="upcoming-list">
               {upcoming.map((event) => {
-                const subject = subjectById(event.subjectId)
+                const subject = findSubject(event.subjectId)
                 const tone = event.dDay <= 3 ? 'urgent' : 'normal'
                 const dateLabel = new Date(event.startAt).toLocaleDateString('ko-KR', {
                   month: 'long',
@@ -325,7 +400,9 @@ export function CalendarScreen() {
                       <p className="upcoming-list__meta">
                         {dateLabel}{subject ? ` · ${subject.name}` : ''}
                         {event.recurrence ? (
-                          <span className="tag tag--accent" style={{ marginLeft: 8 }}>매주</span>
+                          <span className="tag tag--accent" style={{ marginLeft: 8 }}>
+                            {event.recurrence.freq === 'monthly' ? '매월' : event.recurrence.freq === 'weekly' ? '매주' : '반복'}
+                          </span>
                         ) : null}
                       </p>
                     </div>
@@ -348,10 +425,10 @@ export function CalendarScreen() {
             <Icon name="bell" size={18} style={{ color: 'var(--color-accent-strong)' }} />
             <div>
               <p style={{ margin: 0, color: 'var(--color-ink)', fontWeight: 700, fontSize: 14 }}>
-                웹 푸시 알림이 켜져 있어요
+                웹 푸시 알림은 준비 중이에요
               </p>
               <p style={{ margin: '2px 0 0', color: 'var(--color-text)', fontSize: 13 }}>
-                임박한 일정은 1시간 전 알림으로 받습니다.
+                현재는 캘린더에서 D-Day로 임박한 일정을 확인할 수 있어요.
               </p>
             </div>
           </div>

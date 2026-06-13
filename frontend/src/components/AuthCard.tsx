@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from 'react'
 
+import { PasswordResetScreen } from '../app/screens/auth/PasswordResetScreen'
 import { AuthApiError, type AuthSession, type UserResponse } from '../lib/authApi'
 
 import {
@@ -39,6 +40,7 @@ export function AuthCard() {
   const [isCheckingUser, setIsCheckingUser] = useState(Boolean(session))
   const [verificationCode, setVerificationCode] = useState('')
   const [isResending, setIsResending] = useState(false)
+  const [showReset, setShowReset] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -144,6 +146,7 @@ export function AuthCard() {
     setMode(nextMode)
     setPassword('')
     setVerificationCode('')
+    setShowReset(false)
     setMessage(null)
   }
 
@@ -165,6 +168,7 @@ export function AuthCard() {
         const user = await registerUser({ email, password })
         setMode('verify')
         setVerificationCode('')
+        setShowReset(false)
         setMessage({
           tone: 'success',
           text: `${user.email}로 인증 코드를 보냈습니다. 메일함을 확인하고 인증 코드를 입력해주세요.`,
@@ -176,6 +180,7 @@ export function AuthCard() {
         await confirmEmailVerification(email, verificationCode)
         setMode('login')
         setVerificationCode('')
+        setShowReset(false)
         setPassword('')
         setMessage({ tone: 'success', text: '이메일 인증이 완료되었습니다. 이제 로그인할 수 있습니다.' })
         return
@@ -191,6 +196,7 @@ export function AuthCard() {
       if (mode === 'login' && error instanceof AuthApiError && error.status === 403 && error.message.includes('이메일 인증')) {
         setMode('verify')
         setVerificationCode('')
+        setShowReset(false)
         setMessage({ tone: 'error', text: `${formatAuthError(error)} 인증 코드를 입력하거나 재전송해주세요.` })
         return
       }
@@ -275,6 +281,8 @@ export function AuthCard() {
             </button>
           </div>
         </>
+      ) : showReset ? (
+        <PasswordResetScreen onBack={() => setShowReset(false)} />
       ) : (
         <>
           <div className="auth-card__mode-toggle" role="tablist" aria-label="인증 모드">
@@ -348,6 +356,20 @@ export function AuthCard() {
               카카오로 로그인
             </button>
           </div>
+
+          {mode === 'login' ? (
+            <button
+              type="button"
+              className="auth-card__ghost-button"
+              style={{ marginTop: 12, alignSelf: 'flex-start' }}
+              onClick={() => {
+                setShowReset(true)
+                setMessage(null)
+              }}
+            >
+              비밀번호를 잊으셨나요?
+            </button>
+          ) : null}
         </>
       )}
 

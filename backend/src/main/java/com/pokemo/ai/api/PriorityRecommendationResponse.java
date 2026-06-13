@@ -5,7 +5,7 @@ public record PriorityRecommendationResponse(
     Long subjectId,
     String reason,
     Integer dDay,
-    int accuracy,
+    Integer accuracy,
     String tone
 ) {
 }
