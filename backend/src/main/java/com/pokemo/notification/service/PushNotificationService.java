@@ -1,5 +1,6 @@
 package com.pokemo.notification.service;
 
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.interaso.webpush.WebPush;
@@ -49,7 +50,9 @@ public class PushNotificationService {
     this.notificationRepository = notificationRepository;
     this.calendarEventRepository = calendarEventRepository;
     this.vapidKeyManager = vapidKeyManager;
-    this.objectMapper = objectMapper;
+    // Safari Web Push가 페이로드의 비-ASCII 문자를 UTF-8로 디코딩하지 못해 한글이 깨지는 문제를 피하기 위해
+    // 한글 등 비-ASCII 문자를 \\uXXXX 형태로 escape한다.
+    this.objectMapper = objectMapper.copy().configure(JsonGenerator.Feature.ESCAPE_NON_ASCII, true);
   }
 
   public String vapidPublicKey() {
@@ -102,10 +105,10 @@ public class PushNotificationService {
     for (PushSubscription subscription : subscriptions) {
       try {
         WebPush.SubscriptionState state = vapidKeyManager.webPushService().send(
+            payload,
             subscription.endpoint(),
             subscription.p256dh(),
             subscription.auth(),
-            payload,
             TTL_SECONDS,
             null,
             WebPush.Urgency.Normal

@@ -425,10 +425,10 @@ export function CalendarScreen() {
             <Icon name="bell" size={18} style={{ color: 'var(--color-accent-strong)' }} />
             <div>
               <p style={{ margin: 0, color: 'var(--color-ink)', fontWeight: 700, fontSize: 14 }}>
-                일정 알림을 설정할 수 있어요
+                웹 푸시 알림이 켜져 있어요
               </p>
               <p style={{ margin: '2px 0 0', color: 'var(--color-text)', fontSize: 13 }}>
-                일정 추가 시 알림 시점을 선택하고, 대시보드에서 브라우저 푸시 알림을 켤 수 있습니다.
+                임박한 일정은 알림 설정 시점에 맞춰 알림으로 받습니다.
               </p>
             </div>
           </div>
