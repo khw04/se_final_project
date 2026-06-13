@@ -1,6 +1,6 @@
 import { statsApi } from '../../api/statsApi'
-import { subjectById } from '../../api/subjectApi'
-import type { AccuracyTrendPoint, QuestionTypeAccuracy, SubjectProgress, WeeklyStudyPoint } from '../../types'
+import { subjectApi } from '../../api/subjectApi'
+import type { AccuracyTrendPoint, QuestionTypeAccuracy, Subject, SubjectProgress, WeeklyStudyPoint } from '../../types'
 import { useApi } from '../../useApi'
 
 const TYPE_LABELS: Record<QuestionTypeAccuracy['type'], string> = {
@@ -14,8 +14,9 @@ export function StatsScreen() {
   const { data: progress, loading: progressLoading } = useApi(() => statsApi.getSubjectProgress(), [])
   const { data: trend, loading: trendLoading } = useApi(() => statsApi.getAccuracyTrend(), [])
   const { data: typeAccuracy, loading: typeAccuracyLoading } = useApi(() => statsApi.getTypeAccuracy(), [])
+  const { data: subjects, loading: subjectsLoading } = useApi(() => subjectApi.getSubjects(), [])
 
-  const loading = weeklyLoading || progressLoading || trendLoading || typeAccuracyLoading
+  const loading = weeklyLoading || progressLoading || trendLoading || typeAccuracyLoading || subjectsLoading
 
   return (
     <div className="screen">
@@ -33,7 +34,7 @@ export function StatsScreen() {
             <WeeklyChart data={weekly ?? []} />
             <AccuracyTrendChart data={trend ?? []} />
           </div>
-          <SubjectProgressChart data={progress ?? []} />
+          <SubjectProgressChart data={progress ?? []} subjects={subjects ?? []} />
           <TypeAccuracyChart data={typeAccuracy ?? []} />
         </div>
       )}
@@ -94,7 +95,11 @@ function WeeklyChart({ data }: { data: WeeklyStudyPoint[] }) {
   )
 }
 
-function SubjectProgressChart({ data }: { data: SubjectProgress[] }) {
+function subjectLabel(subjects: Subject[], subjectId: number) {
+  return subjects.find((subject) => subject.id === subjectId)?.name ?? `과목 ${subjectId}`
+}
+
+function SubjectProgressChart({ data, subjects }: { data: SubjectProgress[]; subjects: Subject[] }) {
   return (
     <section className="surface">
       <div className="surface__title">
@@ -108,8 +113,8 @@ function SubjectProgressChart({ data }: { data: SubjectProgress[] }) {
       ) : (
         <div style={{ display: 'grid', gap: 16, marginTop: 8 }}>
           {data.map((s) => {
-            const subject = subjectById(s.subjectId)
-            const name = subject?.name ?? `과목 ${s.subjectId}`
+            const subject = subjects.find((item) => item.id === s.subjectId)
+            const name = subjectLabel(subjects, s.subjectId)
             const color = subject?.color ?? 'var(--color-accent)'
             return (
               <div key={s.subjectId}>

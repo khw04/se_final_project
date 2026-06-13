@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { aiApi } from '../api/aiApi'
 import { noteApi } from '../api/noteApi'
 import { quizApi, type AnswerCheckResponse } from '../api/quizApi'
-import { subjectById } from '../api/subjectApi'
+import { subjectApi } from '../api/subjectApi'
 import { Icon } from '../components/Icon'
 import type { Answer, Question, QuestionType } from '../types'
 import { useApi } from '../useApi'
@@ -13,6 +13,7 @@ const QUESTION_TYPES: QuestionType[] = ['mcq', 'ox', 'short']
 
 export function QuizScreen({ quizId }: { quizId?: number }) {
   const { data: quizList, loading: listLoading, refetch: refetchQuizList } = useApi(() => quizApi.listQuizzes(), [])
+  const { data: subjects } = useApi(() => subjectApi.getSubjects(), [])
   const [activeQuizId, setActiveQuizId] = useState<number | null>(quizId ?? null)
   const [generating, setGenerating] = useState(false)
   const [message, setMessage] = useState('')
@@ -120,7 +121,8 @@ export function QuizScreen({ quizId }: { quizId?: number }) {
     ? questions.find((question) => question.id === revealedQuestionId) ?? null
     : null
   const current = revealedQuestion ?? filtered.find((question) => !answeredQuestionIds.has(question.id)) ?? null
-  const subject = subjectById(quiz.subjectId)
+  const subject = subjects?.find((item) => item.id === quiz.subjectId)
+  const subjectName = subject?.name ?? (quiz.subjectId == null ? '과목 없음' : `과목 ${quiz.subjectId}`)
   const allAnswered = answeredQuestionIds.size >= total
 
   async function submit() {
@@ -191,7 +193,7 @@ export function QuizScreen({ quizId }: { quizId?: number }) {
         <p className="eyebrow">퀴즈</p>
         <h1 className="screen__heading">{quiz.title}</h1>
         <p className="screen__lede">
-          {subject?.name} —{' '}
+          {subjectName} —{' '}
           {quiz.generatedBy === 'ai-gpt' || quiz.generatedBy === 'ai-gemini'
             ? 'AI가 노트 내용을 바탕으로 자동 생성한 '
             : '직접 출제한 '}
