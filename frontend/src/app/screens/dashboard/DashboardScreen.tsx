@@ -1,7 +1,7 @@
 import type { AuthSession } from '../../../lib/authApi'
 
 import { dashboardApi } from '../../api/dashboardApi'
-import { subjectApi, subjectById } from '../../api/subjectApi'
+import { subjectApi } from '../../api/subjectApi'
 import { Icon } from '../../components/Icon'
 import { PushNotificationCard } from '../../components/PushNotificationCard'
 import type { StudyTimerState } from '../../nav/types'
@@ -83,13 +83,13 @@ export function DashboardScreen({ session, onJumpTo, studyTimer }: Props) {
         </div>
       </section>
 
-      <DDayStrip events={data.upcomingExams} onJumpTo={onJumpTo} />
+      <DDayStrip events={data.upcomingExams} subjects={subjects ?? []} onJumpTo={onJumpTo} />
 
       <div className="dashboard-grid">
-        <WeeklyStudyCard points={withLiveTodayStudy(data.weeklyStudy, studyTimer)} progressRows={data.subjectProgress} />
+        <WeeklyStudyCard points={withLiveTodayStudy(data.weeklyStudy, studyTimer)} progressRows={data.subjectProgress} subjects={subjects ?? []} />
         <StudyTimerCard subjects={subjects ?? []} timer={studyTimer} />
         <QuizTrendCard points={data.accuracyTrend} />
-        <AiRecommendCard items={data.recommendation} onRefresh={refetch} />
+        <AiRecommendCard items={data.recommendation} subjects={subjects ?? []} onRefresh={refetch} />
         <PushNotificationCard />
       </div>
     </div>
@@ -152,7 +152,12 @@ function StudyTimerCard({ subjects, timer }: { subjects: Subject[]; timer: Study
   )
 }
 
-function DDayStrip({ events, onJumpTo }: { events: CalendarEvent[]; onJumpTo: (v: ViewId) => void }) {
+function subjectLabel(subjects: Subject[], subjectId: number | null | undefined) {
+  if (subjectId == null) return '과목 없음'
+  return subjects.find((subject) => subject.id === subjectId)?.name ?? `과목 ${subjectId}`
+}
+
+function DDayStrip({ events, subjects, onJumpTo }: { events: CalendarEvent[]; subjects: Subject[]; onJumpTo: (v: ViewId) => void }) {
   if (events.length === 0) {
     return (
       <section className="surface" style={{ padding: 'var(--space-4) var(--space-5)' }}>
@@ -164,13 +169,12 @@ function DDayStrip({ events, onJumpTo }: { events: CalendarEvent[]; onJumpTo: (v
   return (
     <section className="dday-strip" aria-label="D-Day 일정">
       {events.map((ev) => {
-        const subject = subjectById(ev.subjectId)
         const urgent = ev.dDay <= 3
         return (
           <button key={ev.id} type="button" className="dday-card" onClick={() => onJumpTo('calendar')}>
             <span className={`dday ${urgent ? 'dday--urgent' : ''}`}>D-{ev.dDay}</span>
             <div>
-              <p className="dday-card__subject">{subject?.name}</p>
+              <p className="dday-card__subject">{subjectLabel(subjects, ev.subjectId)}</p>
               <p className="dday-card__title">{ev.title}</p>
             </div>
           </button>
@@ -180,7 +184,7 @@ function DDayStrip({ events, onJumpTo }: { events: CalendarEvent[]; onJumpTo: (v
   )
 }
 
-function WeeklyStudyCard({ points, progressRows }: { points: WeeklyStudyPoint[]; progressRows: SubjectProgress[] }) {
+function WeeklyStudyCard({ points, progressRows, subjects }: { points: WeeklyStudyPoint[]; progressRows: SubjectProgress[]; subjects: Subject[] }) {
   const seconds = points.map((p) => p.studySeconds ?? p.studyMinutes * 60)
   const maxSeconds = Math.max(360 * 60, ...seconds)
   const totalH = (seconds.reduce((sum, value) => sum + value, 0) / 3600).toFixed(1)
@@ -204,12 +208,12 @@ function WeeklyStudyCard({ points, progressRows }: { points: WeeklyStudyPoint[];
         ))}
       </div>
       <div className="dashboard-card__divider" />
-      <SubjectProgressList rows={progressRows} />
+      <SubjectProgressList rows={progressRows} subjects={subjects} />
     </section>
   )
 }
 
-function SubjectProgressList({ rows }: { rows: SubjectProgress[] }) {
+function SubjectProgressList({ rows, subjects }: { rows: SubjectProgress[]; subjects: Subject[] }) {
   if (rows.length === 0) {
     return <p className="muted-note" style={{ margin: 0 }}>아직 과목별 풀이 기록이 없습니다.</p>
   }
@@ -221,11 +225,10 @@ function SubjectProgressList({ rows }: { rows: SubjectProgress[] }) {
       </div>
       <div className="progress-list">
         {rows.map((row) => {
-          const subject = subjectById(row.subjectId)
           const tone = row.accuracy >= 70 ? 'accent' : 'warning'
           return (
             <div key={row.subjectId} className="progress-row">
-              <span className="progress-row__name">{subject?.name}</span>
+              <span className="progress-row__name">{subjectLabel(subjects, row.subjectId)}</span>
               <div className="progress-row__track">
                 <div className={`progress-row__fill progress-row__fill--${tone}`} style={{ width: `${row.accuracy}%` }} />
               </div>
@@ -238,7 +241,7 @@ function SubjectProgressList({ rows }: { rows: SubjectProgress[] }) {
   )
 }
 
-function AiRecommendCard({ items, onRefresh }: { items: PriorityRecommendation[]; onRefresh: () => void }) {
+function AiRecommendCard({ items, subjects, onRefresh }: { items: PriorityRecommendation[]; subjects: Subject[]; onRefresh: () => void }) {
   return (
     <section className="surface dashboard-card">
       <div className="surface__title">
@@ -252,16 +255,16 @@ function AiRecommendCard({ items, onRefresh }: { items: PriorityRecommendation[]
       </div>
       <ul className="recommend-list">
         {items.map((item) => {
-          const subject = subjectById(item.subjectId)
+          const subjectName = subjectLabel(subjects, item.subjectId)
           const kind = item.tone === 'urgent' ? '시험 임박' : item.tone === 'warning' ? '취약 과목' : '학습 추천'
           return (
             <li key={item.rank}>
               <span className={`tag ${item.tone === 'urgent' ? 'tag--warning' : 'tag--accent'}`}>{kind}</span>
               <div>
-                <p className="recommend-list__label">{subject?.name}</p>
+                <p className="recommend-list__label">{subjectName}</p>
                 <p className="recommend-list__detail">{item.reason}</p>
               </div>
-              <button type="button" className="recommend-list__cta" aria-label={`${subject?.name} 학습 시작`}>
+              <button type="button" className="recommend-list__cta" aria-label={`${subjectName} 학습 시작`}>
                 <Icon name="arrowRight" size={16} />
               </button>
             </li>

@@ -425,10 +425,10 @@ export function CalendarScreen() {
             <Icon name="bell" size={18} style={{ color: 'var(--color-accent-strong)' }} />
             <div>
               <p style={{ margin: 0, color: 'var(--color-ink)', fontWeight: 700, fontSize: 14 }}>
-                웹 푸시 알림은 준비 중이에요
+                일정 알림을 설정할 수 있어요
               </p>
               <p style={{ margin: '2px 0 0', color: 'var(--color-text)', fontSize: 13 }}>
-                현재는 캘린더에서 D-Day로 임박한 일정을 확인할 수 있어요.
+                일정 추가 시 알림 시점을 선택하고, 대시보드에서 브라우저 푸시 알림을 켤 수 있습니다.
               </p>
             </div>
           </div>

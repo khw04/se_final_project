@@ -4,9 +4,9 @@ import { useState } from 'react'
 import { aiApi } from '../api/aiApi'
 import { noteApi } from '../api/noteApi'
 import { quizApi } from '../api/quizApi'
-import { subjectById } from '../api/subjectApi'
+import { subjectApi } from '../api/subjectApi'
 import { Icon } from '../components/Icon'
-import type { Note, PriorityRecommendation, UpcomingSubject, WeakConcept } from '../types'
+import type { Note, PriorityRecommendation, Subject, UpcomingSubject, WeakConcept } from '../types'
 import { useApi } from '../useApi'
 
 type RecommendScreenProps = {
@@ -16,6 +16,7 @@ type RecommendScreenProps = {
 
 export function RecommendScreen({ onOpenNote, onOpenQuiz }: RecommendScreenProps) {
   const { data, loading, refetch } = useApi(() => aiApi.getRecommend(), [])
+  const { data: subjects } = useApi(() => subjectApi.getSubjects(), [])
   const [weakGenerating, setWeakGenerating] = useState(false)
   const [weakMessage, setWeakMessage] = useState('')
 
@@ -60,7 +61,7 @@ export function RecommendScreen({ onOpenNote, onOpenQuiz }: RecommendScreenProps
 
       <NoteSummaryCard onOpenNote={onOpenNote} onOpenQuiz={onOpenQuiz} />
 
-      <PriorityRail items={data.priorities} />
+      <PriorityRail items={data.priorities} subjects={subjects ?? []} />
 
       <div className="recommend-cols">
         <WeakConceptCard
@@ -69,14 +70,20 @@ export function RecommendScreen({ onOpenNote, onOpenQuiz }: RecommendScreenProps
           message={weakMessage}
           onRefresh={refetch}
           onGenerateQuiz={generateWeakQuiz}
+          subjects={subjects ?? []}
         />
-        <UpcomingSubjectCard subjects={data.upcomingSubjects} />
+        <UpcomingSubjectCard subjects={data.upcomingSubjects} subjectOptions={subjects ?? []} />
       </div>
     </div>
   )
 }
 
-function PriorityRail({ items }: { items: PriorityRecommendation[] }) {
+function subjectLabel(subjects: Subject[], subjectId: number | null | undefined) {
+  if (subjectId == null) return '과목 미분류'
+  return subjects.find((subject) => subject.id === subjectId)?.name ?? `과목 ${subjectId}`
+}
+
+function PriorityRail({ items, subjects }: { items: PriorityRecommendation[]; subjects: Subject[] }) {
   return (
     <section className="surface">
       <div className="surface__title">
@@ -85,12 +92,11 @@ function PriorityRail({ items }: { items: PriorityRecommendation[] }) {
       </div>
       <ol className="priority-rail">
         {items.map((item) => {
-          const subject = subjectById(item.subjectId)
           return (
             <li key={item.rank} className={`priority-row priority-row--${item.tone}`}>
               <span className="priority-row__rank">{item.rank}</span>
               <div>
-                <p className="priority-row__subject">{subject?.name}</p>
+                <p className="priority-row__subject">{subjectLabel(subjects, item.subjectId)}</p>
                 <p className="priority-row__reason">{item.reason}</p>
               </div>
               <div className="priority-row__metrics">
@@ -116,12 +122,14 @@ function WeakConceptCard({
   message,
   onRefresh,
   onGenerateQuiz,
+  subjects,
 }: {
   concepts: WeakConcept[]
   generating: boolean
   message: string
   onRefresh: () => void
   onGenerateQuiz: () => void
+  subjects: Subject[]
 }) {
   return (
     <section className="surface">
@@ -139,13 +147,12 @@ function WeakConceptCard({
       </p>
       <ul className="weak-list">
         {concepts.map((concept, index) => {
-          const subject = subjectById(concept.subjectId ?? -1)
           return (
             <li key={`${concept.subjectId ?? 'unknown'}-${concept.concept}-${index}`}>
               <div>
                 <p className="weak-list__concept">{concept.concept}</p>
                 <p className="weak-list__meta">
-                  {subject?.name ?? '과목 미분류'} · 관련: {concept.relatedKeywords.join(', ')}
+                  {subjectLabel(subjects, concept.subjectId)} · 관련: {concept.relatedKeywords.join(', ')}
                 </p>
               </div>
               <span className="weak-list__ratio">
@@ -171,7 +178,7 @@ function WeakConceptCard({
   )
 }
 
-function UpcomingSubjectCard({ subjects }: { subjects: UpcomingSubject[] }) {
+function UpcomingSubjectCard({ subjects, subjectOptions }: { subjects: UpcomingSubject[]; subjectOptions: Subject[] }) {
   return (
     <section className="surface">
       <div className="surface__title">
@@ -184,11 +191,10 @@ function UpcomingSubjectCard({ subjects }: { subjects: UpcomingSubject[] }) {
       <p className="muted-note">시험까지 남은 일수가 짧고 정답률이 낮은 과목을 우선으로 정렬합니다.</p>
       <ul className="upcoming-subjects">
         {subjects.map((subject) => {
-          const meta = subjectById(subject.subjectId)
           return (
             <li key={subject.subjectId}>
               <div>
-                <p className="upcoming-subjects__name">{meta?.name}</p>
+                <p className="upcoming-subjects__name">{subjectLabel(subjectOptions, subject.subjectId)}</p>
                 <p className="upcoming-subjects__meta">
                   D-{subject.dDay} · 정답률 {subject.accuracy == null ? '–' : `${subject.accuracy}%`}
                 </p>

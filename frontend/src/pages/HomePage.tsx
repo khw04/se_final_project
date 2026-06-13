@@ -18,11 +18,6 @@ export function HomePage() {
           <span>학습 흐름을 한곳에,</span>
           <span className="hero-panel__title-brand">Pokemo</span>
         </h1>
-        <p className="hero-panel__copy">
-          Pokemo는 학습 계획, 노트, 퀴즈, 인사이트 흐름을 하나로 연결하는
-          AI 기반 학습 관리 플랫폼입니다. 백엔드 서비스가 준비되는 대로
-          주요 학습 기능을 이 화면에 이어 붙일 예정입니다.
-        </p>
       </div>
       <div className="home-page__sidebar">
         <AuthCard />
