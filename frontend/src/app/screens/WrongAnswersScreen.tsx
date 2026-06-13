@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 import { relativeKo } from '../api/calendarApi'
 import { quizApi } from '../api/quizApi'
-import { subjectById } from '../api/subjectApi'
+import { subjectApi } from '../api/subjectApi'
 import { Icon } from '../components/Icon'
 import type { WrongAnswerNote } from '../types'
 import { useApi } from '../useApi'
@@ -13,6 +13,7 @@ type VisibleWrongAnswer = WrongAnswerNote & { question: NonNullable<WrongAnswerN
 export function WrongAnswersScreen({ onOpenQuiz }: { onOpenQuiz?: (quizId: number) => void }) {
   const [filter, setFilter] = useState<Filter>('all')
   const { data: items, loading } = useApi(() => quizApi.getWrongAnswers({ type: filter }), [filter])
+  const { data: subjects } = useApi(() => subjectApi.getSubjects(), [])
   const [openExplanations, setOpenExplanations] = useState<Record<number, boolean>>({})
   const [retrying, setRetrying] = useState(false)
   const [message, setMessage] = useState('')
@@ -127,12 +128,13 @@ export function WrongAnswersScreen({ onOpenQuiz }: { onOpenQuiz?: (quizId: numbe
           <ul className="wa-list">
             {visibleItems.map((w) => {
               const question = w.question
-              const subject = subjectById(question.subjectId)
+              const subject = subjects?.find((item) => item.id === question.subjectId)
+              const subjectName = subject?.name ?? (question.subjectId == null ? '과목 없음' : `과목 ${question.subjectId}`)
               const typeLabel = question.type === 'mcq' ? '객관식' : question.type === 'short' ? '단답형' : 'OX'
               return (
                 <li key={w.questionId} className={w.missCount >= 2 ? 'is-repeat' : ''}>
                   <div className="wa-list__meta">
-                    <span className="tag">{subject?.name}</span>
+                    <span className="tag">{subjectName}</span>
                     <span className={`tag tag--${question.type === 'ox' ? 'warning' : 'accent'}`}>{typeLabel}</span>
                     {w.missCount >= 2 ? <span className="tag tag--warning">{w.missCount}회 오답</span> : null}
                   </div>
