@@ -33,10 +33,11 @@ public class NoteController {
   List<NoteResponse> getNotes(
       Principal principal,
       @RequestParam(required = false) Long subjectId,
+      @RequestParam(required = false) List<Long> tagIds,
       @RequestParam(required = false) String q
   ) {
     long userId = currentUserProvider.userId(principal);
-    return noteService.getNotes(userId, subjectId, q);
+    return noteService.getNotes(userId, subjectId, tagIds, q);
   }
 
   @GetMapping("/notes/{id}")
@@ -67,6 +68,38 @@ public class NoteController {
   void delete(Principal principal, @PathVariable Long id) {
     long userId = currentUserProvider.userId(principal);
     noteService.delete(userId, id);
+  }
+
+  @PostMapping("/notes/{noteId}/tags/{tagId}")
+  NoteResponse addTag(Principal principal, @PathVariable Long noteId, @PathVariable Long tagId) {
+    long userId = currentUserProvider.userId(principal);
+    return noteService.addTag(userId, noteId, tagId);
+  }
+
+  @DeleteMapping("/notes/{noteId}/tags/{tagId}")
+  NoteResponse removeTag(Principal principal, @PathVariable Long noteId, @PathVariable Long tagId) {
+    long userId = currentUserProvider.userId(principal);
+    return noteService.removeTag(userId, noteId, tagId);
+  }
+
+  @GetMapping("/tags")
+  List<TagResponse> getTags(Principal principal) {
+    long userId = currentUserProvider.userId(principal);
+    return noteService.getTags(userId);
+  }
+
+  @PostMapping("/tags")
+  @ResponseStatus(HttpStatus.CREATED)
+  TagResponse createTag(Principal principal, @Valid @RequestBody CreateTagRequest request) {
+    long userId = currentUserProvider.userId(principal);
+    return noteService.createTag(userId, request);
+  }
+
+  @DeleteMapping("/tags/{tagId}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  void deleteTag(Principal principal, @PathVariable Long tagId) {
+    long userId = currentUserProvider.userId(principal);
+    noteService.deleteTag(userId, tagId);
   }
 
 }
