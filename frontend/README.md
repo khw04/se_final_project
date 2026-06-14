@@ -22,12 +22,22 @@ npm run test
 
 ## API Health Placeholder
 
-Set `VITE_API_BASE_URL` when the Spring Boot backend exists. The placeholder
-currently expects a future health endpoint at:
+Set `VITE_API_BASE_URL` when the Spring Boot backend exists. The value should be the API root itself:
 
 ```text
-${VITE_API_BASE_URL}/actuator/health
+VITE_API_BASE_URL=http://localhost:8080/api
 ```
 
-If the environment variable is not set, the frontend displays
-`http://localhost:8080/actuator/health`.
+If the environment variable is not set, local development defaults to `http://localhost:8080/api`.
+Docker Compose builds the frontend with `VITE_API_BASE_URL=/api`, and `frontend/nginx.conf` proxies `/api/` and `/actuator/` to the backend container.
+
+## OAuth and Demo Environment
+
+The browser only receives public OAuth client IDs:
+
+```env
+VITE_GOOGLE_CLIENT_ID=
+VITE_KAKAO_CLIENT_ID=
+```
+
+Provider secrets, Gemini keys, SMTP passwords, and VAPID private keys must stay in the backend/deploy environment. For frontend-only mock sessions, use `.env.mock` with `VITE_POKEMO_MOCK_SESSION=true`; normal build/dev runs do not load that file automatically.
