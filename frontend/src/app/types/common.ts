@@ -17,6 +17,11 @@ export type Subject = {
   color: string
 }
 
+export type Tag = {
+  id: number
+  name: string
+}
+
 export type Attachment = {
   id: number
   name: string
