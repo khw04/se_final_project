@@ -9,6 +9,7 @@ public record NoteResponse(
     Long subjectId,
     String content,
     List<Long> attachmentIds,
+    List<Long> tagIds,
     String preview,
     String updatedAt,
     String createdAt
@@ -29,6 +30,7 @@ public record NoteResponse(
         note.subjectId(),
         note.content(),
         List.copyOf(attachmentIds),
+        List.copyOf(note.tagIds()),
         preview,
         note.updatedAt().toString(),
         note.createdAt().toString()

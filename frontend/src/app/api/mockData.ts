@@ -10,6 +10,7 @@ import type {
   Quiz,
   Subject,
   SubjectProgress,
+  Tag,
   UpcomingSubject,
   WeakConcept,
   WeeklyStudyPoint,
@@ -24,6 +25,14 @@ export const MOCK_SUBJECTS: Subject[] = [
   { id: 3, name: '영어 회화', color: '#5e8b7e' },
   { id: 4, name: '운영체제', color: '#c85a4f' },
   { id: 5, name: '데이터베이스', color: '#7b6ca8' },
+]
+
+export const MOCK_TAGS: Tag[] = [
+  { id: 1, name: '핵심' },
+  { id: 2, name: '복습필요' },
+  { id: 3, name: '시험범위' },
+  { id: 4, name: '예제' },
+  { id: 5, name: '용어정리' },
 ]
 
 const RAW_EVENTS: Omit<CalendarEvent, 'dDay'>[] = [
@@ -122,6 +131,7 @@ export const MOCK_NOTES: Note[] = [
     title: '극한의 정의',
     subjectId: 1,
     content: NOTE_BODY_LIMITS,
+    tagIds: [1, 3],
     attachmentIds: [201],
     preview: '함수 f(x)의 x → a 에서의 극한이 L 이라는 것은, 임의의 ε > 0 에 대해...',
     updatedAt: '2026-06-04T02:00:00Z',
@@ -132,6 +142,7 @@ export const MOCK_NOTES: Note[] = [
     title: '연속함수의 성질',
     subjectId: 1,
     content: '## 연속함수\n\n중간값 정리, 최대·최소 정리.',
+    tagIds: [2],
     attachmentIds: [],
     preview: '중간값 정리, 최대·최소 정리. 닫힌 구간에서 연속인 함수는...',
     updatedAt: '2026-06-03T11:00:00Z',
@@ -142,6 +153,7 @@ export const MOCK_NOTES: Note[] = [
     title: '해시 충돌 해결',
     subjectId: 2,
     content: '체이닝(separate chaining)과 오픈 어드레싱.',
+    tagIds: [1, 4],
     attachmentIds: [],
     preview: '체이닝(separate chaining)과 오픈 어드레싱. 부하율(load factor) α 가...',
     updatedAt: '2026-06-01T02:00:00Z',
@@ -152,6 +164,7 @@ export const MOCK_NOTES: Note[] = [
     title: 'Phrasal verbs',
     subjectId: 3,
     content: 'look up / look after / look into.',
+    tagIds: [5],
     attachmentIds: [],
     preview: 'look up / look after / look into. 동사 + 부사 또는 동사 + 전치사 결합으로...',
     updatedAt: '2026-05-30T05:00:00Z',
@@ -162,6 +175,7 @@ export const MOCK_NOTES: Note[] = [
     title: '페이지 교체',
     subjectId: 4,
     content: 'FIFO / LRU / Clock 알고리즘.',
+    tagIds: [3],
     attachmentIds: [],
     preview: 'FIFO / LRU / Clock 알고리즘. 메모리 프레임이 가득 찼을 때...',
     updatedAt: '2026-05-28T07:00:00Z',
