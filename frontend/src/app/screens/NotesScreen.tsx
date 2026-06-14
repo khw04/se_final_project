@@ -5,7 +5,7 @@ import { relativeKo } from '../api/calendarApi'
 import { noteApi } from '../api/noteApi'
 import { subjectApi } from '../api/subjectApi'
 import { Icon } from '../components/Icon'
-import type { Attachment, Subject } from '../types'
+import type { Attachment, Subject, Tag } from '../types'
 import { useApi } from '../useApi'
 
 type SaveState = 'saved' | 'saving' | 'error'
@@ -21,9 +21,11 @@ type NotesScreenProps = {
 export function NotesScreen({ initialNoteId, onOpenQuiz }: NotesScreenProps) {
   const { data: subjects, refetch: refetchSubjects } = useApi(() => subjectApi.getSubjects(), [])
   const { data: notes, refetch: refetchNotes } = useApi(() => noteApi.getNotes(), [])
+  const { data: tags, error: tagsError, refetch: refetchTags } = useApi(() => subjectApi.getTags(), [])
 
   const [activeId, setActiveId] = useState<number | null>(initialNoteId ?? null)
   const [activeSubjectId, setActiveSubjectId] = useState<number>(0)
+  const [activeTagIds, setActiveTagIds] = useState<number[]>([])
   const [query, setQuery] = useState<string>('')
   const [editingSubjectId, setEditingSubjectId] = useState<number | null>(null)
   const [editingSubjectName, setEditingSubjectName] = useState('')
@@ -31,6 +33,9 @@ export function NotesScreen({ initialNoteId, onOpenQuiz }: NotesScreenProps) {
   const [newSubjectName, setNewSubjectName] = useState('')
   const [subjectCreating, setSubjectCreating] = useState(false)
   const [subjectListMessage, setSubjectListMessage] = useState<string | null>(null)
+  const [tagDeletingId, setTagDeletingId] = useState<number | null>(null)
+  const [deletedTagIds, setDeletedTagIds] = useState<number[]>([])
+  const [tagListActionMessage, setTagListActionMessage] = useState<string | null>(null)
 
   async function handleCreateNote() {
     const note = await noteApi.createNote('새 노트', activeSubjectId || undefined)
@@ -50,14 +55,29 @@ export function NotesScreen({ initialNoteId, onOpenQuiz }: NotesScreenProps) {
     )
   }
 
+  const allTags = tags ?? []
+  const tagListMessage = tagListActionMessage ?? (tagsError instanceof Error ? tagsError.message : tagsError ? '태그를 불러오지 못했습니다.' : null)
+
+  function findTag(tagId: number) {
+    return allTags.find((tag) => tag.id === tagId)
+  }
+
+  function toggleActiveTag(tagId: number) {
+    setTagListActionMessage(null)
+    setActiveTagIds((prev) => prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId])
+  }
+
   const filteredNotes = notes.filter((note) => {
     if (activeSubjectId !== ALL_SUBJECTS && note.subjectId !== activeSubjectId) return false
+    if (activeTagIds.length > 0 && !activeTagIds.every((tagId) => note.tagIds.includes(tagId))) return false
     if (query) {
       const needle = query.toLowerCase()
+      const noteTagNames = note.tagIds.map((tagId) => findTag(tagId)?.name ?? '').join(' ').toLowerCase()
       if (
         !note.title.toLowerCase().includes(needle) &&
         !note.preview.toLowerCase().includes(needle) &&
-        !note.content.toLowerCase().includes(needle)
+        !note.content.toLowerCase().includes(needle) &&
+        !noteTagNames.includes(needle)
       ) {
         return false
       }
@@ -97,6 +117,25 @@ export function NotesScreen({ initialNoteId, onOpenQuiz }: NotesScreenProps) {
       await refetchNotes()
     } catch (error) {
       setSubjectListMessage(error instanceof Error ? error.message : '과목을 삭제하지 못했습니다.')
+    }
+  }
+
+  async function deleteTag(tag: Tag) {
+    const ok = window.confirm(`'${tag.name}' 태그를 삭제할까요? 이 태그는 모든 노트에서 제거됩니다.`)
+    if (!ok) return
+
+    setTagDeletingId(tag.id)
+    setTagListActionMessage(null)
+    try {
+      await subjectApi.deleteTag(tag.id)
+      setActiveTagIds((prev) => prev.filter((id) => id !== tag.id))
+      setDeletedTagIds((prev) => prev.includes(tag.id) ? prev : [...prev, tag.id])
+      await refetchTags()
+      await refetchNotes()
+    } catch (error) {
+      setTagListActionMessage(error instanceof Error ? error.message : '태그를 삭제하지 못했습니다.')
+    } finally {
+      setTagDeletingId(null)
     }
   }
 
@@ -142,7 +181,7 @@ export function NotesScreen({ initialNoteId, onOpenQuiz }: NotesScreenProps) {
           <div className="notes-search">
             <Icon name="search" size={16} />
             <input
-              placeholder="제목, 내용 검색"
+              placeholder="제목, 내용, 태그 검색"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -212,6 +251,43 @@ export function NotesScreen({ initialNoteId, onOpenQuiz }: NotesScreenProps) {
               과목 추가하기
             </button>
           )}
+
+          <p className="label" style={{ marginTop: 16 }}>
+            태그
+          </p>
+          <div className="notes-tags">
+            {allTags.map((tag) => {
+              const count = notes.filter((note) => note.tagIds.includes(tag.id)).length
+              const active = activeTagIds.includes(tag.id)
+              return (
+                <span key={tag.id} className={`notes-tag-filter ${active ? 'is-active' : ''}`}>
+                  <button
+                    type="button"
+                    className={`tag notes-tag-filter__toggle ${active ? 'tag--accent' : ''}`}
+                    aria-pressed={active}
+                    onClick={() => toggleActiveTag(tag.id)}
+                  >
+                    {tag.name} {count}
+                  </button>
+                  <button
+                    type="button"
+                    className="notes-tag-filter__delete"
+                    aria-label={`${tag.name} 태그 삭제`}
+                    disabled={tagDeletingId === tag.id}
+                    onClick={() => void deleteTag(tag)}
+                  >
+                    <Icon name="x" size={11} />
+                  </button>
+                </span>
+              )
+            })}
+            {activeTagIds.length > 0 ? (
+              <button type="button" className="tag" onClick={() => setActiveTagIds([])}>
+                전체 태그
+              </button>
+            ) : null}
+          </div>
+          {tagListMessage ? <p className="notes-editor__picker-error">{tagListMessage}</p> : null}
         </aside>
 
         <section className="surface notes-list">
@@ -227,6 +303,7 @@ export function NotesScreen({ initialNoteId, onOpenQuiz }: NotesScreenProps) {
           <ul>
             {filteredNotes.map((note) => {
               const subject = subjects.find((s) => s.id === note.subjectId)
+              const noteTags = note.tagIds.map(findTag).filter((tag): tag is Tag => Boolean(tag))
               return (
                 <li key={note.id} className={note.id === selectedNoteId ? 'is-active' : ''}>
                   <button
@@ -238,6 +315,15 @@ export function NotesScreen({ initialNoteId, onOpenQuiz }: NotesScreenProps) {
                     <p className="notes-list__subject">
                       {subject?.name} · {relativeKo(note.updatedAt)}
                     </p>
+                    {noteTags.length > 0 ? (
+                      <div className="notes-tags">
+                        {noteTags.map((tag) => (
+                          <span key={tag.id} className="tag">
+                            {tag.name}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
                   </button>
                 </li>
               )
@@ -255,7 +341,10 @@ export function NotesScreen({ initialNoteId, onOpenQuiz }: NotesScreenProps) {
               <NoteEditor
                 noteId={selectedNoteId}
                 subjects={subjects}
+                tags={allTags}
+                deletedTagIds={deletedTagIds}
                 onSaved={refetchNotes}
+                onTagsChanged={refetchTags}
                 onDeleted={() => void handleDeleteNote(selectedNoteId)}
                 onOpenQuiz={onOpenQuiz}
                 onSubjectCreated={(subject) => {
@@ -274,23 +363,33 @@ export function NotesScreen({ initialNoteId, onOpenQuiz }: NotesScreenProps) {
 type NoteEditorProps = {
   noteId: number
   subjects: Subject[]
+  tags: Tag[]
+  deletedTagIds: number[]
   onSaved?: () => void
+  onTagsChanged?: () => void
   onDeleted?: () => void
   onSubjectCreated?: (subject: Subject) => void
   onOpenQuiz?: (quizId: number) => void
 }
 
-function NoteEditor({ noteId, subjects, onSaved, onDeleted, onSubjectCreated, onOpenQuiz }: NoteEditorProps) {
+function NoteEditor({ noteId, subjects, tags, deletedTagIds, onSaved, onTagsChanged, onDeleted, onSubjectCreated, onOpenQuiz }: NoteEditorProps) {
   const { data: note, loading } = useApi(() => noteApi.getNote(noteId), [noteId])
 
   const [body, setBody] = useState<string>('')
   const [title, setTitle] = useState<string>('')
   const [currentSubjectId, setCurrentSubjectId] = useState<number | null>(null)
+  const [currentTagIds, setCurrentTagIds] = useState<number[]>([])
   const [createdSubjects, setCreatedSubjects] = useState<Subject[]>([])
+  const [createdTags, setCreatedTags] = useState<Tag[]>([])
   const [showSubjectPicker, setShowSubjectPicker] = useState(false)
+  const [showTagPicker, setShowTagPicker] = useState(false)
   const [newSubjectName, setNewSubjectName] = useState('')
+  const [newTagName, setNewTagName] = useState('')
   const [subjectError, setSubjectError] = useState<string | null>(null)
+  const [tagError, setTagError] = useState<string | null>(null)
   const [subjectSubmitting, setSubjectSubmitting] = useState(false)
+  const [tagSubmitting, setTagSubmitting] = useState(false)
+  const [tagUpdatingId, setTagUpdatingId] = useState<number | null>(null)
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [attachmentDeletingId, setAttachmentDeletingId] = useState<number | null>(null)
   const [saveState, setSaveState] = useState<SaveState>('saved')
@@ -371,6 +470,48 @@ function NoteEditor({ noteId, subjects, onSaved, onDeleted, onSubjectCreated, on
     }
   }
 
+  async function handleTagToggle(tagId: number) {
+    if (!note) return
+    setTagUpdatingId(tagId)
+    setTagError(null)
+    setSaveState('saving')
+    try {
+      const updated = currentTagIds.includes(tagId)
+        ? await noteApi.removeTagFromNote(note.id, tagId)
+        : await noteApi.addTagToNote(note.id, tagId)
+      setCurrentTagIds(updated.tagIds)
+      setSaveState('saved')
+      onSavedRef.current?.()
+    } catch (error) {
+      setSaveState('error')
+      setTagError(error instanceof Error ? error.message : '태그를 변경하지 못했습니다.')
+    } finally {
+      setTagUpdatingId(null)
+    }
+  }
+
+  async function handleTagCreate(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const name = newTagName.trim()
+    if (!name || !note) return
+
+    setTagSubmitting(true)
+    setTagError(null)
+    try {
+      const tag = await subjectApi.createTag({ name })
+      setCreatedTags((prev) => [...prev.filter((item) => item.id !== tag.id), tag])
+      setNewTagName('')
+      onTagsChanged?.()
+      if (!currentTagIds.includes(tag.id)) {
+        await handleTagToggle(tag.id)
+      }
+    } catch (error) {
+      setTagError(error instanceof Error ? error.message : '태그를 추가하지 못했습니다.')
+    } finally {
+      setTagSubmitting(false)
+    }
+  }
+
   useEffect(() => {
     if (!note) return
     let alive = true
@@ -380,6 +521,7 @@ function NoteEditor({ noteId, subjects, onSaved, onDeleted, onSubjectCreated, on
       setBody(note.content)
       setTitle(note.title)
       setCurrentSubjectId(note.subjectId)
+      setCurrentTagIds(note.tagIds)
     })
     noteApi.getAttachments(note.attachmentIds).then((nextAttachments) => {
       if (alive) setAttachments(nextAttachments)
@@ -421,7 +563,12 @@ function NoteEditor({ noteId, subjects, onSaved, onDeleted, onSubjectCreated, on
     ...subjects,
     ...createdSubjects.filter((created) => !subjects.some((subject) => subject.id === created.id)),
   ]
+  const availableTags = [
+    ...tags,
+    ...createdTags.filter((created) => !tags.some((tag) => tag.id === created.id)),
+  ].filter((tag) => !deletedTagIds.includes(tag.id))
   const subject = availableSubjects.find((s) => s.id === currentSubjectId)
+  const noteTags = currentTagIds.map((id) => availableTags.find((tag) => tag.id === id)).filter((tag): tag is Tag => Boolean(tag))
 
   function formatBytes(n: number) {
     if (n < 1024) return `${n} B`
@@ -447,6 +594,11 @@ function NoteEditor({ noteId, subjects, onSaved, onDeleted, onSubjectCreated, on
         />
         <div className="notes-editor__meta" style={{ position: 'relative' }}>
           {subject ? <span className="tag tag--accent">{subject.name}</span> : null}
+          {noteTags.map((tag) => (
+            <span key={tag.id} className="tag">
+              {tag.name}
+            </span>
+          ))}
           <button
             type="button"
             className="notes-editor__add-tag"
@@ -454,9 +606,22 @@ function NoteEditor({ noteId, subjects, onSaved, onDeleted, onSubjectCreated, on
             aria-expanded={showSubjectPicker}
             onClick={() => {
               setShowSubjectPicker((value) => !value)
+              setShowTagPicker(false)
             }}
           >
             <Icon name="plus" size={14} />
+          </button>
+          <button
+            type="button"
+            className="notes-editor__add-tag notes-editor__add-tag--label"
+            aria-label="태그 선택"
+            aria-expanded={showTagPicker}
+            onClick={() => {
+              setShowTagPicker((value) => !value)
+              setShowSubjectPicker(false)
+            }}
+          >
+            태그
           </button>
           {showSubjectPicker && (
             <div className="notes-editor__picker">
@@ -482,6 +647,37 @@ function NoteEditor({ noteId, subjects, onSaved, onDeleted, onSubjectCreated, on
                 </button>
               </form>
               {subjectError ? <p className="notes-editor__picker-error">{subjectError}</p> : null}
+            </div>
+          )}
+          {showTagPicker && (
+            <div className="notes-editor__picker notes-editor__picker--tags">
+              {availableTags.map((tag) => {
+                const selected = currentTagIds.includes(tag.id)
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    className={`tag ${selected ? 'tag--accent' : ''}`}
+                    aria-pressed={selected}
+                    disabled={tagUpdatingId === tag.id}
+                    onClick={() => void handleTagToggle(tag.id)}
+                  >
+                    {selected ? '✓ ' : ''}{tag.name}
+                  </button>
+                )
+              })}
+              <form className="notes-editor__picker-form" onSubmit={handleTagCreate}>
+                <input
+                  className="notes-editor__picker-input"
+                  placeholder="새 태그 이름"
+                  value={newTagName}
+                  onChange={(event) => setNewTagName(event.target.value)}
+                />
+                <button type="submit" className="surface__title-action" disabled={tagSubmitting || !newTagName.trim()}>
+                  {tagSubmitting ? '추가 중...' : '추가'}
+                </button>
+              </form>
+              {tagError ? <p className="notes-editor__picker-error">{tagError}</p> : null}
             </div>
           )}
         </div>
