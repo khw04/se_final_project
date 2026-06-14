@@ -381,7 +381,20 @@
 
 @media (max-width: 560px) {
   .hero-panel {
+    overflow: hidden;
     padding: var(--space-5);
+  }
+
+  .hero-panel__spring {
+    display: none;
+  }
+
+  .hero-panel h1 {
+    max-width: 100%;
+  }
+
+  .hero-panel h1 span:first-child {
+    white-space: normal;
   }
 
   .hero-panel::before {

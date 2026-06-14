@@ -178,16 +178,17 @@ export function CalendarScreen() {
       </header>
 
       {showAddForm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-4)', overflowY: 'auto' }}>
           <form
             onSubmit={handleAddEvent}
-            style={{ background: 'var(--color-surface)', borderRadius: 12, padding: 24, width: 360, display: 'flex', flexDirection: 'column', gap: 12 }}
+            style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-3)', padding: 'var(--space-5)', width: 'min(var(--layout-api-card-max), 100%)', maxHeight: 'calc(100svh - (var(--space-4) * 2))', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}
           >
             <h3 style={{ margin: 0 }}>일정 추가</h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 13, color: 'var(--color-text)' }}>제목 *</label>
+              <label htmlFor="calendar-event-title" style={{ fontSize: 13, color: 'var(--color-text)' }}>제목 *</label>
               <input
+                id="calendar-event-title"
                 className="notes-editor__title"
                 style={{ fontSize: 14 }}
                 placeholder="일정 제목"
@@ -198,8 +199,9 @@ export function CalendarScreen() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 13, color: 'var(--color-text)' }}>날짜 *</label>
+              <label htmlFor="calendar-event-date" style={{ fontSize: 13, color: 'var(--color-text)' }}>날짜 *</label>
               <input
+                id="calendar-event-date"
                 type="date"
                 style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14 }}
                 value={formDate}
@@ -209,8 +211,9 @@ export function CalendarScreen() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 13, color: 'var(--color-text)' }}>유형</label>
+              <label htmlFor="calendar-event-type" style={{ fontSize: 13, color: 'var(--color-text)' }}>유형</label>
               <select
+                id="calendar-event-type"
                 style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14 }}
                 value={formType}
                 onChange={(e) => setFormType(e.target.value)}
@@ -223,8 +226,9 @@ export function CalendarScreen() {
 
             {subjects && subjects.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 13, color: 'var(--color-text)' }}>과목</label>
+                <label htmlFor="calendar-event-subject" style={{ fontSize: 13, color: 'var(--color-text)' }}>과목</label>
                 <select
+                  id="calendar-event-subject"
                   style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14 }}
                   value={formSubjectId}
                   onChange={(e) => setFormSubjectId(e.target.value)}
@@ -238,8 +242,9 @@ export function CalendarScreen() {
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 13, color: 'var(--color-text)' }}>알림 시점</label>
+              <label htmlFor="calendar-event-reminder" style={{ fontSize: 13, color: 'var(--color-text)' }}>알림 시점</label>
               <select
+                id="calendar-event-reminder"
                 style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14 }}
                 value={formReminder}
                 onChange={(e) => setFormReminder(e.target.value)}
@@ -251,8 +256,9 @@ export function CalendarScreen() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 13, color: 'var(--color-text)' }}>반복</label>
+              <label htmlFor="calendar-event-repeat" style={{ fontSize: 13, color: 'var(--color-text)' }}>반복</label>
               <select
+                id="calendar-event-repeat"
                 style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14 }}
                 value={formRepeat}
                 onChange={(e) => setFormRepeat(e.target.value as RepeatMode)}
@@ -265,7 +271,7 @@ export function CalendarScreen() {
 
             {formRepeat === 'weekly' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 13, color: 'var(--color-text)' }}>반복 요일 (미선택 시 시작 요일)</label>
+                <span style={{ fontSize: 13, color: 'var(--color-text)' }}>반복 요일 (미선택 시 시작 요일)</span>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {WEEKDAYS.map((d) => {
                     const active = formWeekdays.includes(d.value)
