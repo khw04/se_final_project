@@ -148,8 +148,9 @@ public class AiService {
     Map<Long, Integer> accuracyBySubject = accuracyBySubject(userId);
     List<WeakConceptResponse> weakConcepts = weakConcepts(userId);
     List<UpcomingSubjectResponse> upcomingSubjects = upcomingSubjects(userId, accuracyBySubject);
+    List<WeakSubjectCandidate> weakSubjects = weakSubjects(userId);
     List<PriorityRecommendationResponse> priorities =
-        priorities(userId, weakConcepts, upcomingSubjects, accuracyBySubject);
+        priorities(userId, weakConcepts, upcomingSubjects, weakSubjects, accuracyBySubject);
     return new RecommendResponse(priorities, weakConcepts, upcomingSubjects, true);
   }
 
@@ -161,6 +162,17 @@ public class AiService {
             SubjectProgressResponse::subjectId,
             SubjectProgressResponse::accuracy,
             (left, right) -> left));
+  }
+
+  private List<WeakSubjectCandidate> weakSubjects(long userId) {
+    return statsService.getSubjectProgress(userId).stream()
+        .filter(item -> item.attempted() > 0)
+        .filter(item -> item.accuracy() < 70)
+        .sorted(Comparator
+            .comparingInt(SubjectProgressResponse::accuracy)
+            .thenComparing(SubjectProgressResponse::subjectId))
+        .map(item -> new WeakSubjectCandidate(item.subjectId(), item.accuracy(), item.attempted()))
+        .toList();
   }
 
   private Note findOwnedNote(long userId, long noteId) {
@@ -323,14 +335,29 @@ public class AiService {
       long userId,
       List<WeakConceptResponse> weakConcepts,
       List<UpcomingSubjectResponse> upcomingSubjects,
+      List<WeakSubjectCandidate> weakSubjects,
       Map<Long, Integer> accuracyBySubject
   ) {
     List<PriorityRecommendationResponse> result = new ArrayList<>();
+    Set<Long> recommendedSubjectIds = new HashSet<>();
     upcomingSubjects.stream()
         .sorted(Comparator.comparingInt(UpcomingSubjectResponse::dDay))
         .limit(2)
         .forEach(item -> result.add(new PriorityRecommendationResponse(result.size() + 1,
             item.subjectId(), "시험·과제 일정이 임박했습니다: " + item.label(), item.dDay(), item.accuracy(), item.dDay() <= 3 ? "urgent" : "warning")));
+    result.stream()
+        .map(PriorityRecommendationResponse::subjectId)
+        .filter(id -> id != null)
+        .forEach(recommendedSubjectIds::add);
+    weakSubjects.stream()
+        .filter(item -> !recommendedSubjectIds.contains(item.subjectId()))
+        .limit(2)
+        .forEach(item -> {
+          recommendedSubjectIds.add(item.subjectId());
+          result.add(new PriorityRecommendationResponse(result.size() + 1,
+              item.subjectId(), "정답률이 낮은 과목을 우선 복습하세요.", null, item.accuracy(),
+              item.accuracy() < 50 ? "urgent" : "warning"));
+        });
     weakConcepts.stream().limit(2).forEach(item -> result.add(new PriorityRecommendationResponse(result.size() + 1,
         item.subjectId(), "오답이 누적된 개념을 복습하세요: " + item.concept(), null,
         item.subjectId() == null ? null : accuracyBySubject.get(item.subjectId()), "warning")));
@@ -340,6 +367,9 @@ public class AiService {
           solved > 0 ? "최근 퀴즈 정답률을 유지하기 위해 새 문제를 풀어보세요." : "노트를 작성하고 첫 퀴즈를 생성해보세요.", null, null, "normal"));
     }
     return result;
+  }
+
+  private record WeakSubjectCandidate(Long subjectId, int accuracy, int attempted) {
   }
 
   private List<String> strings(JsonNode node) {

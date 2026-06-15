@@ -8,6 +8,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
@@ -16,7 +17,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "notes")
+@Table(name = "notes", indexes = {
+    @Index(name = "idx_notes_user_updated", columnList = "user_id, updated_at"),
+    @Index(name = "idx_notes_user_subject_updated", columnList = "user_id, subject_id, updated_at"),
+    @Index(name = "idx_notes_user_title", columnList = "user_id, title")
+})
 public class Note {
 
   @Id

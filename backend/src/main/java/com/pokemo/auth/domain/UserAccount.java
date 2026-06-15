@@ -78,6 +78,10 @@ public class UserAccount {
     return role;
   }
 
+  public void promoteToAdmin() {
+    this.role = UserRole.ADMIN;
+  }
+
   public boolean emailVerified() {
     return emailVerified;
   }

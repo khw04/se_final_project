@@ -37,24 +37,23 @@ public class NoteService {
 
   @Transactional(readOnly = true)
   public List<NoteResponse> getNotes(Long userId, Long subjectId, List<Long> tagIds, String q) {
-    List<Note> notes = noteRepository.findByUserIdOrderByUpdatedAtDesc(userId);
-    if (subjectId != null) {
-      notes = notes.stream().filter(n -> subjectId.equals(n.subjectId())).toList();
-    }
+    List<Note> baseNotes = subjectId == null
+        ? noteRepository.findByUserIdOrderByUpdatedAtDesc(userId)
+        : noteRepository.findByUserIdAndSubjectIdOrderByUpdatedAtDesc(userId, subjectId);
+    List<Note> notes = baseNotes;
     if (tagIds != null && !tagIds.isEmpty()) {
       validateOwnedTags(userId, tagIds);
       notes = notes.stream().filter(n -> n.tagIds().containsAll(tagIds)).toList();
     }
     if (q != null && !q.isBlank()) {
-      String needle = q.toLowerCase();
+      List<Note> textMatches = noteRepository.searchByTitleOrContent(userId, subjectId, q.strip());
       Set<Long> matchingTagIds = tagRepository.findByUserIdAndNameContainingIgnoreCase(userId, q.strip())
           .stream()
           .map(Tag::id)
           .collect(java.util.stream.Collectors.toSet());
+      Set<Long> textMatchIds = textMatches.stream().map(Note::id).collect(java.util.stream.Collectors.toSet());
       notes = notes.stream()
-          .filter(n -> n.title().toLowerCase().contains(needle)
-              || n.content().toLowerCase().contains(needle)
-              || n.tagIds().stream().anyMatch(matchingTagIds::contains))
+          .filter(n -> textMatchIds.contains(n.id()) || n.tagIds().stream().anyMatch(matchingTagIds::contains))
           .toList();
     }
     return notes.stream().map(this::toResponse).toList();

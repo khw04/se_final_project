@@ -60,3 +60,6 @@ pokemo:
       public-key: ${VAPID_PUBLIC_KEY:}
       private-key: ${VAPID_PRIVATE_KEY:}
       subject: ${VAPID_SUBJECT:mailto:admin@pokemo.dev}
+  storage:
+    local:
+      upload-dir: ${LOCAL_UPLOAD_DIR:uploads}
