@@ -171,6 +171,61 @@ class NoteControllerTests {
   }
 
   @Test
+  void pagedNotesReturnPageMetadata() throws Exception {
+    String token = token();
+    createNote(token, "첫 번째 노트", "내용1");
+    createNote(token, "두 번째 노트", "내용2");
+
+    mockMvc.perform(get("/api/notes/paged?page=0&size=1").header("Authorization", "Bearer " + token))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content.length()").value(1))
+        .andExpect(jsonPath("$.page").value(0))
+        .andExpect(jsonPath("$.size").value(1))
+        .andExpect(jsonPath("$.totalElements").value(2));
+  }
+
+  @Test
+  void searchQueryIsBoundAsParameter() throws Exception {
+    String token = token();
+    createNote(token, "정상 노트", "내용");
+
+    mockMvc.perform(get("/api/notes?q=' OR 1=1 --").header("Authorization", "Bearer " + token))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.length()").value(0));
+  }
+
+  @Test
+  void patchCreatesVersionAndRestoreRevertsContent() throws Exception {
+    String token = token();
+    String noteId = createNote(token, "버전 노트", "처음 내용");
+
+    mockMvc.perform(patch("/api/notes/" + noteId)
+            .header("Authorization", "Bearer " + token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"title":"수정 노트","content":"수정 내용"}
+                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.title").value("수정 노트"));
+
+    MvcResult versions = mockMvc.perform(get("/api/notes/" + noteId + "/versions")
+            .header("Authorization", "Bearer " + token))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.length()").value(1))
+        .andExpect(jsonPath("$[0].title").value("버전 노트"))
+        .andReturn();
+
+    String versionId = versions.getResponse().getContentAsString()
+        .replaceAll(".*\"id\":(\\d+).*", "$1");
+
+    mockMvc.perform(post("/api/notes/" + noteId + "/versions/" + versionId + "/restore")
+            .header("Authorization", "Bearer " + token))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.title").value("버전 노트"))
+        .andExpect(jsonPath("$.content").value("처음 내용"));
+  }
+
+  @Test
   void createAndListTags() throws Exception {
     String token = token();
 

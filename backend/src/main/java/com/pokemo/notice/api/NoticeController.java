@@ -1,9 +1,12 @@
 package com.pokemo.notice.api;
 
+import com.pokemo.common.PageResponse;
 import com.pokemo.notice.service.NoticeService;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.List;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,6 +31,15 @@ public class NoticeController {
   @GetMapping
   List<NoticeResponse> list() {
     return noticeService.list();
+  }
+
+  @GetMapping("/paged")
+  PageResponse<NoticeResponse> listPaged(
+      @org.springframework.web.bind.annotation.RequestParam(defaultValue = "0") int page,
+      @org.springframework.web.bind.annotation.RequestParam(defaultValue = "20") int size
+  ) {
+    Pageable pageable = PageRequest.of(Math.max(page, 0), Math.max(1, Math.min(size, 100)));
+    return noticeService.listPaged(pageable);
   }
 
   @GetMapping("/{id}")

@@ -83,7 +83,7 @@ class AuthControllerTests {
   }
 
   @Test
-  void refreshReturnsNewAccessTokenForStoredRefreshToken() throws Exception {
+  void refreshRotatesStoredRefreshToken() throws Exception {
     UserAccount verifiedUser = new UserAccount(
         "student@example.com",
         passwordEncoder.encode("password123"),
@@ -108,7 +108,12 @@ class AuthControllerTests {
             .content("{\"refreshToken\":\"" + refreshToken + "\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.accessToken", not(blankOrNullString())))
-        .andExpect(jsonPath("$.refreshToken").value(refreshToken));
+        .andExpect(jsonPath("$.refreshToken", not(refreshToken)));
+
+    mockMvc.perform(post("/api/auth/refresh")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"refreshToken\":\"" + refreshToken + "\"}"))
+        .andExpect(status().isUnauthorized());
   }
 
   @Test
