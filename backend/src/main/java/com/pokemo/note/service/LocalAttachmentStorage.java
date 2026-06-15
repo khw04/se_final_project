@@ -8,11 +8,15 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.io.PathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 @Component
+@ConditionalOnProperty(name = "pokemo.storage.type", havingValue = "local", matchIfMissing = true)
 public class LocalAttachmentStorage implements AttachmentStorage {
 
   private final Path uploadDir;
@@ -48,7 +52,11 @@ public class LocalAttachmentStorage implements AttachmentStorage {
   }
 
   @Override
-  public Path resolvePath(String storedName) {
+  public Resource load(String storedName) {
+    return new PathResource(resolvePath(storedName));
+  }
+
+  private Path resolvePath(String storedName) {
     return uploadDir.resolve(storedName).normalize();
   }
 }

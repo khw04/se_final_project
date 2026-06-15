@@ -6,7 +6,7 @@ import com.pokemo.note.domain.Attachment;
 import com.pokemo.note.domain.Note;
 import com.pokemo.note.repository.AttachmentRepository;
 import com.pokemo.note.repository.NoteRepository;
-import java.nio.file.Path;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,7 +63,7 @@ public class AttachmentService {
     attachmentStorage.delete(attachment.storedName());
   }
 
-  public Path resolvePath(String storedName) {
-    return attachmentStorage.resolvePath(storedName);
+  public Resource load(String storedName) {
+    return attachmentStorage.load(storedName);
   }
 }
