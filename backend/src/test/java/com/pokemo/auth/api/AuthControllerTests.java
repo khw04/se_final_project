@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.blankOrNullString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.pokemo.auth.domain.UserAccount;
@@ -229,5 +230,15 @@ class AuthControllerTests {
   void protectedEndpointRequiresAuthentication() throws Exception {
     mockMvc.perform(get("/api/protected-placeholder"))
         .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void responsesIncludeSecurityHeaders() throws Exception {
+    mockMvc.perform(get("/api/health"))
+        .andExpect(status().isOk())
+        .andExpect(header().exists("Content-Security-Policy"))
+        .andExpect(header().exists("Referrer-Policy"))
+        .andExpect(header().exists("Permissions-Policy"))
+        .andExpect(header().exists("X-Frame-Options"));
   }
 }
