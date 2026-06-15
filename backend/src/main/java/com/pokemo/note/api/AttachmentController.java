@@ -4,10 +4,7 @@ import com.pokemo.common.CurrentUserProvider;
 import com.pokemo.note.domain.Attachment;
 import com.pokemo.note.service.AttachmentService;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.security.Principal;
-import org.springframework.core.io.PathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -54,8 +51,7 @@ public class AttachmentController {
   @GetMapping("/attachments/{id}")
   ResponseEntity<Resource> download(@PathVariable Long id) throws IOException {
     Attachment attachment = attachmentService.findForDownload(id);
-    Path path = attachmentService.resolvePath(attachment.storedName());
-    Resource resource = new PathResource(path);
+    Resource resource = attachmentService.load(attachment.storedName());
     String contentType = attachment.mimeType() != null ? attachment.mimeType() : "application/octet-stream";
     return ResponseEntity.ok()
         .contentType(MediaType.parseMediaType(contentType))

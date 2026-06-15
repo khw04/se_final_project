@@ -6,6 +6,8 @@ import com.pokemo.notice.api.NoticeResponse;
 import com.pokemo.notice.domain.Notice;
 import com.pokemo.notice.repository.NoticeRepository;
 import java.util.List;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +22,7 @@ public class NoticeService {
   }
 
   @Transactional(readOnly = true)
+  @Cacheable("notices")
   public List<NoticeResponse> list() {
     return noticeRepository.findAllByOrderByPinnedDescCreatedAtDesc().stream()
         .map(NoticeResponse::from)
@@ -34,12 +37,14 @@ public class NoticeService {
   }
 
   @Transactional
+  @CacheEvict(value = "notices", allEntries = true)
   public NoticeResponse create(NoticeRequest request, String author) {
     Notice notice = new Notice(request.title(), request.body(), request.tag(), request.pinned(), author);
     return NoticeResponse.from(noticeRepository.save(notice));
   }
 
   @Transactional
+  @CacheEvict(value = "notices", allEntries = true)
   public NoticeResponse update(long id, NoticeRequest request) {
     Notice notice = findById(id);
     notice.update(request.title(), request.body(), request.tag(), request.pinned());
@@ -47,6 +52,7 @@ public class NoticeService {
   }
 
   @Transactional
+  @CacheEvict(value = "notices", allEntries = true)
   public void delete(long id) {
     Notice notice = findById(id);
     noticeRepository.delete(notice);

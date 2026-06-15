@@ -6,6 +6,8 @@ import com.pokemo.subject.api.SubjectResponse;
 import com.pokemo.subject.domain.Subject;
 import com.pokemo.subject.repository.SubjectRepository;
 import java.util.List;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +22,7 @@ public class SubjectService {
   }
 
   @Transactional(readOnly = true)
+  @Cacheable("subjects")
   public List<SubjectResponse> getAll() {
     return subjectRepository.findAll().stream()
         .map(SubjectResponse::from)
@@ -27,6 +30,7 @@ public class SubjectService {
   }
 
   @Transactional
+  @CacheEvict(value = "subjects", allEntries = true)
   public SubjectResponse create(CreateSubjectRequest request) {
     if (subjectRepository.existsByName(request.name())) {
       throw new ApiException(HttpStatus.CONFLICT, "이미 존재하는 과목명입니다.");
@@ -36,6 +40,7 @@ public class SubjectService {
   }
 
   @Transactional
+  @CacheEvict(value = "subjects", allEntries = true)
   public SubjectResponse update(Long id, CreateSubjectRequest request) {
     Subject subject = subjectRepository.findById(id)
         .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "과목을 찾을 수 없습니다."));
@@ -49,6 +54,7 @@ public class SubjectService {
   }
 
   @Transactional
+  @CacheEvict(value = "subjects", allEntries = true)
   public void delete(Long id) {
     if (!subjectRepository.existsById(id)) {
       throw new ApiException(HttpStatus.NOT_FOUND, "과목을 찾을 수 없습니다.");

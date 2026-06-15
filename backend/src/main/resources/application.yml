@@ -14,6 +14,15 @@ spring:
           auth: true
           starttls:
             enable: true
+  cache:
+    type: ${CACHE_TYPE:simple}
+    redis:
+      time-to-live: ${REDIS_CACHE_TTL:10m}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
 
 server:
   port: ${SERVER_PORT:8080}
@@ -61,5 +70,10 @@ pokemo:
       private-key: ${VAPID_PRIVATE_KEY:}
       subject: ${VAPID_SUBJECT:mailto:admin@pokemo.dev}
   storage:
+    type: ${STORAGE_TYPE:local}
     local:
       upload-dir: ${LOCAL_UPLOAD_DIR:uploads}
+    s3:
+      bucket: ${S3_BUCKET:}
+      region: ${AWS_REGION:ap-northeast-2}
+      prefix: ${S3_PREFIX:attachments}
