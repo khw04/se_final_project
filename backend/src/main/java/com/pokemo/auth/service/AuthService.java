@@ -105,19 +105,28 @@ public class AuthService {
   @Transactional
   public AuthResponse refresh(RefreshTokenRequest request) {
     AuthToken refreshToken = authTokenRepository.findByToken(request.refreshToken())
-        .orElseThrow(() -> new AuthException(HttpStatus.UNAUTHORIZED, "유효하지 않은 리프레시 토큰입니다"));
+        .orElseThrow(() -> {
+          log.warn("Refresh failed: unknown refresh token");
+          return new AuthException(HttpStatus.UNAUTHORIZED, "유효하지 않은 리프레시 토큰입니다");
+        });
 
     if (!refreshToken.activeAt(OffsetDateTime.now())) {
+      log.warn("Refresh failed: inactive refresh token for userId={}", refreshToken.user().id());
       throw new AuthException(HttpStatus.UNAUTHORIZED, "만료된 리프레시 토큰입니다");
     }
 
     UserAccount user = refreshToken.user();
+    refreshToken.revoke();
+    String newRefreshToken = UUID.randomUUID().toString();
+    OffsetDateTime refreshExpiresAt = OffsetDateTime.now().plus(jwtTokenService.refreshTokenTtl());
+    authTokenRepository.save(new AuthToken(user, newRefreshToken, refreshExpiresAt));
+    log.info("Refresh rotated: userId={}", user.id());
     return new AuthResponse(
         user.id(),
         user.email(),
         user.role().name(),
         jwtTokenService.createAccessToken(user),
-        refreshToken.token(),
+        newRefreshToken,
         "Bearer",
         jwtTokenService.accessTokenTtl().toSeconds()
     );

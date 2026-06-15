@@ -1,19 +1,24 @@
 package com.pokemo.note.service;
 
 import com.pokemo.common.ApiException;
+import com.pokemo.common.PageResponse;
 import com.pokemo.note.api.CreateTagRequest;
 import com.pokemo.note.api.NotePatchRequest;
 import com.pokemo.note.api.NoteRequest;
 import com.pokemo.note.api.NoteResponse;
+import com.pokemo.note.api.NoteVersionResponse;
 import com.pokemo.note.api.TagResponse;
 import com.pokemo.note.domain.Note;
 import com.pokemo.note.domain.Tag;
 import com.pokemo.note.repository.AttachmentRepository;
 import com.pokemo.note.repository.NoteRepository;
+import com.pokemo.note.repository.NoteVersionRepository;
 import com.pokemo.note.repository.TagRepository;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,15 +29,18 @@ public class NoteService {
   private final NoteRepository noteRepository;
   private final AttachmentRepository attachmentRepository;
   private final TagRepository tagRepository;
+  private final NoteVersionRepository noteVersionRepository;
 
   public NoteService(
       NoteRepository noteRepository,
       AttachmentRepository attachmentRepository,
-      TagRepository tagRepository
+      TagRepository tagRepository,
+      NoteVersionRepository noteVersionRepository
   ) {
     this.noteRepository = noteRepository;
     this.attachmentRepository = attachmentRepository;
     this.tagRepository = tagRepository;
+    this.noteVersionRepository = noteVersionRepository;
   }
 
   @Transactional(readOnly = true)
@@ -60,6 +68,34 @@ public class NoteService {
   }
 
   @Transactional(readOnly = true)
+  public PageResponse<NoteResponse> getNotesPaged(
+      Long userId,
+      Long subjectId,
+      List<Long> tagIds,
+      String q,
+      Pageable pageable
+  ) {
+    Page<Note> page;
+    if (q != null && !q.isBlank()) {
+      page = noteRepository.searchByTitleOrContent(userId, subjectId, q.strip(), pageable);
+    } else {
+      page = subjectId == null
+          ? noteRepository.findByUserIdOrderByUpdatedAtDesc(userId, pageable)
+          : noteRepository.findByUserIdAndSubjectIdOrderByUpdatedAtDesc(userId, subjectId, pageable);
+    }
+    if (tagIds != null && !tagIds.isEmpty()) {
+      validateOwnedTags(userId, tagIds);
+      List<NoteResponse> content = page.getContent().stream()
+          .filter(note -> note.tagIds().containsAll(tagIds))
+          .map(this::toResponse)
+          .toList();
+      return new PageResponse<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
+          page.getTotalPages(), page.isFirst(), page.isLast());
+    }
+    return PageResponse.from(page.map(this::toResponse));
+  }
+
+  @Transactional(readOnly = true)
   public NoteResponse getNote(Long userId, Long id) {
     return toResponse(findOwned(userId, id));
   }
@@ -74,6 +110,7 @@ public class NoteService {
   @Transactional
   public NoteResponse patch(Long userId, Long id, NotePatchRequest request) {
     Note note = findOwned(userId, id);
+    saveVersion(note);
     if (request.title() != null) note.updateTitle(request.title());
     if (request.subjectId() != null) note.updateSubject(request.subjectId());
     if (request.content() != null) note.updateContent(request.content());
@@ -84,7 +121,26 @@ public class NoteService {
   public void delete(Long userId, Long id) {
     Note note = findOwned(userId, id);
     attachmentRepository.findByNoteId(id).forEach(a -> attachmentRepository.delete(a));
+    noteVersionRepository.deleteByNoteId(id);
     noteRepository.delete(note);
+  }
+
+  @Transactional(readOnly = true)
+  public List<NoteVersionResponse> getVersions(Long userId, Long noteId) {
+    findOwned(userId, noteId);
+    return noteVersionRepository.findByNoteIdAndUserIdOrderByVersionNumberDesc(noteId, userId).stream()
+        .map(NoteVersionResponse::from)
+        .toList();
+  }
+
+  @Transactional
+  public NoteResponse restoreVersion(Long userId, Long noteId, Long versionId) {
+    Note note = findOwned(userId, noteId);
+    var version = noteVersionRepository.findByIdAndNoteIdAndUserId(versionId, noteId, userId)
+        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "노트 버전을 찾을 수 없습니다."));
+    saveVersion(note);
+    note.update(version.title(), version.subjectId(), version.content());
+    return toResponse(note);
   }
 
   @Transactional
@@ -141,6 +197,17 @@ public class NoteService {
       throw new ApiException(HttpStatus.FORBIDDEN, "접근 권한이 없습니다.");
     }
     return note;
+  }
+
+  private void saveVersion(Note note) {
+    int nextVersion = noteVersionRepository.countByNoteId(note.id()) + 1;
+    noteVersionRepository.save(new com.pokemo.note.domain.NoteVersion(
+        note.id(),
+        note.userId(),
+        nextVersion,
+        note.title(),
+        note.subjectId(),
+        note.content()));
   }
 
   private Tag findOwnedTag(Long userId, Long tagId) {

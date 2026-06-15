@@ -1,6 +1,7 @@
 package com.pokemo.notice.service;
 
 import com.pokemo.common.ApiException;
+import com.pokemo.common.PageResponse;
 import com.pokemo.notice.api.NoticeRequest;
 import com.pokemo.notice.api.NoticeResponse;
 import com.pokemo.notice.domain.Notice;
@@ -8,6 +9,7 @@ import com.pokemo.notice.repository.NoticeRepository;
 import java.util.List;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,12 @@ public class NoticeService {
     return noticeRepository.findAllByOrderByPinnedDescCreatedAtDesc().stream()
         .map(NoticeResponse::from)
         .toList();
+  }
+
+  @Transactional(readOnly = true)
+  public PageResponse<NoticeResponse> listPaged(Pageable pageable) {
+    return PageResponse.from(noticeRepository.findAllByOrderByPinnedDescCreatedAtDesc(pageable)
+        .map(NoticeResponse::from));
   }
 
   @Transactional

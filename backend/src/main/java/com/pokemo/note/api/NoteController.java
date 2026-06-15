@@ -1,10 +1,14 @@
 package com.pokemo.note.api;
 
 import com.pokemo.common.CurrentUserProvider;
+import com.pokemo.common.PageResponse;
 import com.pokemo.note.service.NoteService;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.List;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,6 +44,22 @@ public class NoteController {
     return noteService.getNotes(userId, subjectId, tagIds, q);
   }
 
+  @GetMapping("/notes/paged")
+  PageResponse<NoteResponse> getNotesPaged(
+      Principal principal,
+      @RequestParam(required = false) Long subjectId,
+      @RequestParam(required = false) List<Long> tagIds,
+      @RequestParam(required = false) String q,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "20") int size
+  ) {
+    long userId = currentUserProvider.userId(principal);
+    int normalizedPage = Math.max(page, 0);
+    int normalizedSize = Math.max(1, Math.min(size, 100));
+    Pageable pageable = PageRequest.of(normalizedPage, normalizedSize, Sort.by(Sort.Direction.DESC, "updatedAt"));
+    return noteService.getNotesPaged(userId, subjectId, tagIds, q, pageable);
+  }
+
   @GetMapping("/notes/{id}")
   NoteResponse getNote(Principal principal, @PathVariable Long id) {
     long userId = currentUserProvider.userId(principal);
@@ -68,6 +88,18 @@ public class NoteController {
   void delete(Principal principal, @PathVariable Long id) {
     long userId = currentUserProvider.userId(principal);
     noteService.delete(userId, id);
+  }
+
+  @GetMapping("/notes/{id}/versions")
+  List<NoteVersionResponse> getVersions(Principal principal, @PathVariable Long id) {
+    long userId = currentUserProvider.userId(principal);
+    return noteService.getVersions(userId, id);
+  }
+
+  @PostMapping("/notes/{id}/versions/{versionId}/restore")
+  NoteResponse restoreVersion(Principal principal, @PathVariable Long id, @PathVariable Long versionId) {
+    long userId = currentUserProvider.userId(principal);
+    return noteService.restoreVersion(userId, id, versionId);
   }
 
   @PostMapping("/notes/{noteId}/tags/{tagId}")

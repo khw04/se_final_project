@@ -78,6 +78,19 @@ class NoticeControllerTests {
   }
 
   @Test
+  void pagedListReturnsPageMetadata() throws Exception {
+    noticeRepository.save(new Notice("첫 공지", "본문", NoticeTag.공지, false, "운영팀"));
+    noticeRepository.save(new Notice("둘째 공지", "본문", NoticeTag.점검, true, "운영팀"));
+
+    mockMvc.perform(get("/api/notices/paged?page=0&size=1"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content.length()").value(1))
+        .andExpect(jsonPath("$.page").value(0))
+        .andExpect(jsonPath("$.size").value(1))
+        .andExpect(jsonPath("$.totalElements").value(2));
+  }
+
+  @Test
   void detailIncrementsViewCount() throws Exception {
     Notice notice = noticeRepository.save(new Notice("조회 테스트", "본문", NoticeTag.공지, false, "운영팀"));
 
