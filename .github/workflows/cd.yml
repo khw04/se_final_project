@@ -1,0 +1,60 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+      }}
+    steps:
+      - name: Deploy on EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_SSH_PORT: ${{ secrets.EC2_SSH_PORT || '22' }}
+          EC2_PROJECT_DIR: ${{ secrets.EC2_PROJECT_DIR }}
+        run: |
+          if [ -z "$EC2_HOST" ] || [ -z "$EC2_USER" ] || [ -z "$EC2_SSH_KEY" ] || [ -z "$EC2_PROJECT_DIR" ]; then
+            echo "EC2 deploy secrets are not fully configured; skipping deployment."
+            exit 0
+          fi
+
+          mkdir -p ~/.ssh
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/pokemo_deploy_key
+          chmod 600 ~/.ssh/pokemo_deploy_key
+          ssh-keyscan -p "$EC2_SSH_PORT" -H "$EC2_HOST" >> ~/.ssh/known_hosts
+
+          ssh -i ~/.ssh/pokemo_deploy_key -p "$EC2_SSH_PORT" "$EC2_USER@$EC2_HOST" \
+            "DEPLOY_DIR='$EC2_PROJECT_DIR' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          cd "$DEPLOY_DIR"
+
+          git fetch origin main
+          git reset --hard origin/main
+
+          docker compose -f docker-compose.prod.yml --env-file .env config >/dev/null
+          docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+
+          curl --fail --silent --show-error --max-time 30 http://localhost:8080/api/health
+          docker compose -f docker-compose.prod.yml ps
+          REMOTE
