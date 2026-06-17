@@ -57,6 +57,20 @@ jobs:
           docker image prune -af
           docker compose -f docker-compose.prod.yml --env-file .env up -d --build
 
-          curl --fail --silent --show-error --max-time 30 http://localhost:8080/api/health
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error --max-time 10 http://localhost:8080/api/health; then
+              break
+            fi
+
+            if [ "$attempt" -eq 30 ]; then
+              docker compose -f docker-compose.prod.yml logs --tail=120 backend
+              docker compose -f docker-compose.prod.yml logs --tail=80 frontend
+              exit 1
+            fi
+
+            echo "Health check failed; retrying in 5 seconds ($attempt/30)."
+            sleep 5
+          done
+
           docker compose -f docker-compose.prod.yml ps
           REMOTE
