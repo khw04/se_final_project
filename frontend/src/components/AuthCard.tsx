@@ -226,6 +226,25 @@ export function AuthCard() {
 
   return (
     <aside className="auth-card" aria-labelledby="auth-card-title">
+      {!session ? (
+        <div
+          data-cd-smoke-test="true"
+          style={{
+            background: 'var(--color-warning-soft)',
+            border: 'var(--border-width-2) solid var(--color-warning)',
+            borderRadius: 'var(--radius-3)',
+            color: 'var(--color-warning)',
+            fontSize: 'var(--font-size-5)',
+            fontWeight: 'var(--font-weight-bold)',
+            lineHeight: 'var(--line-height-tight)',
+            margin: '0 0 var(--space-5)',
+            padding: 'var(--space-3) var(--space-4)',
+            textAlign: 'center',
+          }}
+        >
+          cd테스트
+        </div>
+      ) : null}
       <div className="auth-card__eyebrow">계정 접속</div>
       <div className="auth-card__heading-row">
         <h2 id="auth-card-title">
