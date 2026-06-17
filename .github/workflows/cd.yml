@@ -53,6 +53,8 @@ jobs:
           git reset --hard origin/main
 
           docker compose -f docker-compose.prod.yml --env-file .env config >/dev/null
+          docker builder prune -af
+          docker image prune -af
           docker compose -f docker-compose.prod.yml --env-file .env up -d --build
 
           curl --fail --silent --show-error --max-time 30 http://localhost:8080/api/health
