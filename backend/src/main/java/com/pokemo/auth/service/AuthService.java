@@ -10,6 +10,7 @@ import com.pokemo.auth.domain.UserAccount;
 import com.pokemo.auth.domain.UserRole;
 import com.pokemo.auth.repository.AuthTokenRepository;
 import com.pokemo.auth.repository.UserAccountRepository;
+import com.pokemo.common.LogMask;
 import com.pokemo.subject.service.SubjectService;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -67,21 +68,21 @@ public class AuthService {
     String email = normalizeEmail(request.email());
     UserAccount user = userAccountRepository.findByEmail(email)
         .orElseThrow(() -> {
-          log.warn("Login failed: unknown email={}", email);
+          log.warn("Login failed: unknown email={}", LogMask.email(email));
           return new AuthException(HttpStatus.NOT_FOUND, "가입되지 않은 이메일입니다");
         });
 
     if (user.passwordHash() == null || !passwordEncoder.matches(request.password(), user.passwordHash())) {
-      log.warn("Login failed: bad credentials for userId={} email={}", user.id(), user.email());
+      log.warn("Login failed: bad credentials for userId={} email={}", user.id(), LogMask.email(user.email()));
       throw new AuthException(HttpStatus.UNAUTHORIZED, "비밀번호가 일치하지 않습니다");
     }
 
     if (!user.emailVerified()) {
-      log.warn("Login blocked: unverified email for userId={} email={}", user.id(), user.email());
+      log.warn("Login blocked: unverified email for userId={} email={}", user.id(), LogMask.email(user.email()));
       throw new AuthException(HttpStatus.FORBIDDEN, "이메일 인증이 필요합니다. 가입 시 받은 인증 코드를 확인해주세요.");
     }
 
-    log.info("Login succeeded: userId={} email={} role={}", user.id(), user.email(), user.role());
+    log.info("Login succeeded: userId={} email={} role={}", user.id(), LogMask.email(user.email()), user.role());
     return issueTokens(user);
   }
 
