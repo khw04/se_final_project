@@ -23,6 +23,10 @@ export const subjectApi = {
     return data
   },
 
+  getCachedSubjects(): Subject[] {
+    return subjectCache
+  },
+
   async getTags(): Promise<Tag[]> {
     const data = await apiFetch<Tag[]>('/tags')
     tagCache = data
@@ -83,5 +87,6 @@ export const createSubject = subjectApi.createSubject
 export const deleteTag = subjectApi.deleteTag
 export const getTags = subjectApi.getTags
 export const getSubjects = subjectApi.getSubjects
+export const getCachedSubjects = subjectApi.getCachedSubjects
 export const subjectById = subjectApi.subjectById
 export const tagById = subjectApi.tagById

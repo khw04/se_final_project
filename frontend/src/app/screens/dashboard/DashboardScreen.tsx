@@ -26,6 +26,7 @@ export function DashboardScreen({ session, onJumpTo, studyTimer }: Props) {
   const greeting = session.email.split('@')[0]
   const { data, loading, refetch } = useApi(() => dashboardApi.getDashboard(), [])
   const { data: subjects } = useApi(() => subjectApi.getSubjects(), [])
+  const visibleSubjects = subjects ?? subjectApi.getCachedSubjects()
 
   if (loading || !data) {
     return (
@@ -83,13 +84,13 @@ export function DashboardScreen({ session, onJumpTo, studyTimer }: Props) {
         </div>
       </section>
 
-      <DDayStrip events={data.upcomingExams} subjects={subjects ?? []} onJumpTo={onJumpTo} />
+      <DDayStrip events={data.upcomingExams} subjects={visibleSubjects} onJumpTo={onJumpTo} />
 
       <div className="dashboard-grid">
-        <WeeklyStudyCard points={withLiveTodayStudy(data.weeklyStudy, studyTimer)} progressRows={data.subjectProgress} subjects={subjects ?? []} />
-        <StudyTimerCard subjects={subjects ?? []} timer={studyTimer} />
+        <WeeklyStudyCard points={withLiveTodayStudy(data.weeklyStudy, studyTimer)} progressRows={data.subjectProgress} subjects={visibleSubjects} />
+        <StudyTimerCard subjects={visibleSubjects} timer={studyTimer} />
         <QuizTrendCard points={data.accuracyTrend} />
-        <AiRecommendCard items={data.recommendation} subjects={subjects ?? []} onRefresh={refetch} />
+        <AiRecommendCard items={data.recommendation} subjects={visibleSubjects} onRefresh={refetch} />
         <PushNotificationCard />
       </div>
     </div>
