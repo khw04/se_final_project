@@ -11,9 +11,9 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
 
 @Configuration
 @EnableWebSecurity
@@ -52,7 +52,9 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.GET, "/api/attachments/**").permitAll()
             .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
             .requestMatchers(HttpMethod.GET, "/api/notices", "/api/notices/**").permitAll()
-            .requestMatchers("/api/notices/**").hasRole("ADMIN")
+            .requestMatchers(HttpMethod.POST, "/api/notices").hasRole("ADMIN")
+            .requestMatchers(HttpMethod.PUT, "/api/notices/**").hasRole("ADMIN")
+            .requestMatchers(HttpMethod.DELETE, "/api/notices/**").hasRole("ADMIN")
             .requestMatchers("/api/admin/**").hasRole("ADMIN")
             .anyRequest().authenticated())
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

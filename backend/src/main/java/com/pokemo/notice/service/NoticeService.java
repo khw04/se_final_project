@@ -8,7 +8,6 @@ import com.pokemo.notice.domain.Notice;
 import com.pokemo.notice.repository.NoticeRepository;
 import java.util.List;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -24,7 +23,6 @@ public class NoticeService {
   }
 
   @Transactional(readOnly = true)
-  @Cacheable("notices")
   public List<NoticeResponse> list() {
     return noticeRepository.findAllByOrderByPinnedDescCreatedAtDesc().stream()
         .map(NoticeResponse::from)
