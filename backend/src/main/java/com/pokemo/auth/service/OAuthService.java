@@ -8,6 +8,7 @@ import com.pokemo.auth.domain.UserAccount;
 import com.pokemo.auth.domain.UserRole;
 import com.pokemo.auth.repository.OAuthAccountRepository;
 import com.pokemo.auth.repository.UserAccountRepository;
+import com.pokemo.subject.service.SubjectService;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.http.HttpStatus;
@@ -21,17 +22,20 @@ public class OAuthService {
   private final UserAccountRepository userAccountRepository;
   private final OAuthAccountRepository oauthAccountRepository;
   private final AuthService authService;
+  private final SubjectService subjectService;
 
   public OAuthService(
       List<OAuthClient> clients,
       UserAccountRepository userAccountRepository,
       OAuthAccountRepository oauthAccountRepository,
-      AuthService authService
+      AuthService authService,
+      SubjectService subjectService
   ) {
     this.clients = clients;
     this.userAccountRepository = userAccountRepository;
     this.oauthAccountRepository = oauthAccountRepository;
     this.authService = authService;
+    this.subjectService = subjectService;
   }
 
   @Transactional
@@ -67,6 +71,7 @@ public class OAuthService {
     } else {
       user = userAccountRepository.save(
           UserAccount.oauthUser(email, UserRole.USER, info.emailVerified()));
+      subjectService.seedDefaults(user.id());
     }
 
     oauthAccountRepository.save(new OAuthAccount(user, provider, info.providerUserId(), info.email()));

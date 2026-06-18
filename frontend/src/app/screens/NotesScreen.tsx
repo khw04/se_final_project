@@ -20,7 +20,7 @@ type NotesScreenProps = {
 
 export function NotesScreen({ initialNoteId, onOpenQuiz }: NotesScreenProps) {
   const { data: subjectsData, refetch: refetchSubjects } = useApi(() => subjectApi.getSubjects(), [])
-  const subjects = subjectsData ?? []
+  const subjects = subjectsData ?? subjectApi.getCachedSubjects()
   const { data: notes, refetch: refetchNotes } = useApi(() => noteApi.getNotes(), [])
   const { data: tags, error: tagsError, refetch: refetchTags } = useApi(() => subjectApi.getTags(), [])
 

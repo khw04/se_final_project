@@ -10,13 +10,16 @@ import jakarta.persistence.UniqueConstraint;
 
 @Entity
 @Table(name = "subjects", uniqueConstraints = {
-    @UniqueConstraint(name = "uk_subjects_name", columnNames = "name")
+    @UniqueConstraint(name = "uk_subjects_user_name", columnNames = {"user_id", "name"})
 })
 public class Subject {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
+
+  @Column(name = "user_id", nullable = false)
+  private Long userId;
 
   @Column(nullable = false, length = 100)
   private String name;
@@ -27,7 +30,10 @@ public class Subject {
   protected Subject() {
   }
 
-  public Subject(String name, String color) {
+  public Subject(Long userId, String name, String color) {
+    if (userId == null) {
+      throw new IllegalArgumentException("Subject owner must not be null");
+    }
     if (name == null || name.isBlank()) {
       throw new IllegalArgumentException("Subject name must not be blank");
     }
@@ -35,6 +41,7 @@ public class Subject {
       throw new IllegalArgumentException("Subject color must not be blank");
     }
 
+    this.userId = userId;
     this.name = name;
     this.color = color;
   }
@@ -52,6 +59,10 @@ public class Subject {
 
   public Long id() {
     return id;
+  }
+
+  public Long userId() {
+    return userId;
   }
 
   public String name() {

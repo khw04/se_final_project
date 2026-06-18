@@ -36,7 +36,10 @@ public class StudySessionService {
 
   @Transactional
   public StudySessionResponse create(long userId, StudySessionRequest request) {
-    if (!subjectRepository.existsById(request.subjectId())) {
+    boolean ownsSubject = subjectRepository.findById(request.subjectId())
+        .filter(subject -> subject.userId().equals(userId))
+        .isPresent();
+    if (!ownsSubject) {
       throw new ApiException(HttpStatus.NOT_FOUND, "과목을 찾을 수 없습니다.");
     }
 

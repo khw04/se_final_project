@@ -36,9 +36,15 @@ class SubjectControllerTests {
   @BeforeEach
   void setUp() {
     authTokenRepository.deleteAll();
+    subjectRepository.deleteAll();
     userAccountRepository.deleteAll();
+    createUser("test@pokemo.dev");
+    createUser("other@pokemo.dev");
+  }
+
+  private void createUser(String email) {
     UserAccount user = new UserAccount(
-        "test@pokemo.dev",
+        email,
         passwordEncoder.encode("pass1234"),
         UserRole.USER
     );
@@ -47,8 +53,8 @@ class SubjectControllerTests {
   }
 
   @Test
-  void getSubjectsReturnsSeededList() throws Exception {
-    mockMvc.perform(get("/api/subjects").header("Authorization", "Bearer " + token()))
+  void getSubjectsReturnsArray() throws Exception {
+    mockMvc.perform(get("/api/subjects").header("Authorization", "Bearer " + token("test@pokemo.dev")))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$").isArray());
   }
@@ -56,7 +62,7 @@ class SubjectControllerTests {
   @Test
   void createSubjectReturns201() throws Exception {
     mockMvc.perform(post("/api/subjects")
-            .header("Authorization", "Bearer " + token())
+            .header("Authorization", "Bearer " + token("test@pokemo.dev"))
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
                 {"name":"테스트과목","color":"#123456"}
@@ -68,7 +74,7 @@ class SubjectControllerTests {
 
   @Test
   void createSubjectConflictOnDuplicateName() throws Exception {
-    String token = token();
+    String token = token("test@pokemo.dev");
     mockMvc.perform(post("/api/subjects")
             .header("Authorization", "Bearer " + token)
             .contentType(MediaType.APPLICATION_JSON)
@@ -88,18 +94,8 @@ class SubjectControllerTests {
 
   @Test
   void deleteSubjectReturns204() throws Exception {
-    String token = token();
-    MvcResult result = mockMvc.perform(post("/api/subjects")
-            .header("Authorization", "Bearer " + token)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {"name":"삭제할과목","color":"#ff0000"}
-                """))
-        .andExpect(status().isCreated())
-        .andReturn();
-
-    String body = result.getResponse().getContentAsString();
-    String id = body.replaceAll(".*\"id\":(\\d+).*", "$1");
+    String token = token("test@pokemo.dev");
+    String id = createSubject(token, "삭제할과목", "#ff0000");
 
     mockMvc.perform(delete("/api/subjects/" + id)
             .header("Authorization", "Bearer " + token))
@@ -112,12 +108,54 @@ class SubjectControllerTests {
         .andExpect(status().isForbidden());
   }
 
-  private String token() throws Exception {
-    MvcResult result = mockMvc.perform(post("/api/auth/login")
+  @Test
+  void subjectsAreIsolatedPerUser() throws Exception {
+    String owner = token("test@pokemo.dev");
+    createSubject(owner, "내과목", "#abcdef");
+
+    // 같은 이름이라도 다른 사용자는 충돌 없이 자기 과목을 만들 수 있다.
+    String other = token("other@pokemo.dev");
+    mockMvc.perform(post("/api/subjects")
+            .header("Authorization", "Bearer " + other)
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
-                {"email":"test@pokemo.dev","password":"pass1234"}
+                {"name":"내과목","color":"#000000"}
                 """))
+        .andExpect(status().isCreated());
+
+    // 다른 사용자의 과목 목록에는 본인 과목만 보인다.
+    mockMvc.perform(get("/api/subjects").header("Authorization", "Bearer " + other))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.length()").value(1))
+        .andExpect(jsonPath("$[0].color").value("#000000"));
+  }
+
+  @Test
+  void cannotDeleteOtherUsersSubject() throws Exception {
+    String owner = token("test@pokemo.dev");
+    String id = createSubject(owner, "보호과목", "#123123");
+
+    String other = token("other@pokemo.dev");
+    mockMvc.perform(delete("/api/subjects/" + id)
+            .header("Authorization", "Bearer " + other))
+        .andExpect(status().isForbidden());
+  }
+
+  private String createSubject(String token, String name, String color) throws Exception {
+    MvcResult result = mockMvc.perform(post("/api/subjects")
+            .header("Authorization", "Bearer " + token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"name\":\"" + name + "\",\"color\":\"" + color + "\"}"))
+        .andExpect(status().isCreated())
+        .andReturn();
+    String body = result.getResponse().getContentAsString();
+    return body.replaceAll(".*\"id\":(\\d+).*", "$1");
+  }
+
+  private String token(String email) throws Exception {
+    MvcResult result = mockMvc.perform(post("/api/auth/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"email\":\"" + email + "\",\"password\":\"pass1234\"}"))
         .andReturn();
     return result.getResponse().getContentAsString()
         .replaceAll(".*\"accessToken\":\"([^\"]+)\".*", "$1");
