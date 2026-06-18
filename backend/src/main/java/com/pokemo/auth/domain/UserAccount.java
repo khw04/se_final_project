@@ -1,12 +1,16 @@
 package com.pokemo.auth.domain;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.OffsetDateTime;
@@ -24,8 +28,9 @@ public class UserAccount {
   @Column(nullable = false, length = 320)
   private String email;
 
-  @Column(length = 100)
-  private String passwordHash;
+  @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+  @JoinColumn(name = "credential_id")
+  private Credential credential;
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 20)
@@ -42,7 +47,7 @@ public class UserAccount {
 
   public UserAccount(String email, String passwordHash, UserRole role) {
     this.email = email;
-    this.passwordHash = passwordHash;
+    this.credential = passwordHash != null ? new Credential(passwordHash) : null;
     this.role = role;
     this.emailVerified = false;
     this.createdAt = OffsetDateTime.now();
@@ -55,7 +60,7 @@ public class UserAccount {
   public static UserAccount oauthUser(String email, UserRole role, boolean emailVerified) {
     UserAccount user = new UserAccount();
     user.email = email;
-    user.passwordHash = null;
+    user.credential = null;
     user.role = role;
     user.emailVerified = emailVerified;
     user.createdAt = OffsetDateTime.now();
@@ -71,7 +76,11 @@ public class UserAccount {
   }
 
   public String passwordHash() {
-    return passwordHash;
+    return credential != null ? credential.passwordHash() : null;
+  }
+
+  public Credential credential() {
+    return credential;
   }
 
   public UserRole role() {
@@ -91,10 +100,11 @@ public class UserAccount {
   }
 
   public void changePassword(String passwordHash) {
-    if (passwordHash == null || passwordHash.isBlank()) {
-      throw new IllegalArgumentException("Password hash must not be blank");
+    if (credential != null) {
+      credential.changePassword(passwordHash);
+    } else {
+      credential = new Credential(passwordHash);
     }
-    this.passwordHash = passwordHash;
   }
 
   public OffsetDateTime createdAt() {
