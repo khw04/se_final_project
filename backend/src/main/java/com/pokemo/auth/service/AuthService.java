@@ -10,6 +10,7 @@ import com.pokemo.auth.domain.UserAccount;
 import com.pokemo.auth.domain.UserRole;
 import com.pokemo.auth.repository.AuthTokenRepository;
 import com.pokemo.auth.repository.UserAccountRepository;
+import com.pokemo.subject.service.SubjectService;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -29,19 +30,22 @@ public class AuthService {
   private final PasswordEncoder passwordEncoder;
   private final JwtTokenService jwtTokenService;
   private final EmailVerificationService emailVerificationService;
+  private final SubjectService subjectService;
 
   public AuthService(
       UserAccountRepository userAccountRepository,
       AuthTokenRepository authTokenRepository,
       PasswordEncoder passwordEncoder,
       JwtTokenService jwtTokenService,
-      EmailVerificationService emailVerificationService
+      EmailVerificationService emailVerificationService,
+      SubjectService subjectService
   ) {
     this.userAccountRepository = userAccountRepository;
     this.authTokenRepository = authTokenRepository;
     this.passwordEncoder = passwordEncoder;
     this.jwtTokenService = jwtTokenService;
     this.emailVerificationService = emailVerificationService;
+    this.subjectService = subjectService;
   }
 
   @Transactional
@@ -52,9 +56,10 @@ public class AuthService {
     }
 
     UserAccount user = new UserAccount(email, passwordEncoder.encode(request.password()), UserRole.USER);
-    UserResponse response = UserResponse.from(userAccountRepository.save(user));
+    UserAccount saved = userAccountRepository.save(user);
+    subjectService.seedDefaults(saved.id());
     emailVerificationService.requestCode(email);
-    return response;
+    return UserResponse.from(saved);
   }
 
   @Transactional
