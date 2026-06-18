@@ -3,3 +3,6 @@
 .env.*
 !.env.example
 !backend/.env.example
+
+# Local RDS truststore/certificates
+certs/
