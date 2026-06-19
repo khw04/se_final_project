@@ -54,7 +54,7 @@ GEMINI_API_KEY=실제_API_KEY
 GEMINI_MODEL=gemini-2.0-flash
 ```
 
-`docker-compose.yml`은 루트 `.env` 값을 읽어서 backend 컨테이너의 환경변수로 전달합니다.
+`docker-compose.prod.yml`은 루트 `.env` 값을 읽어서 backend 컨테이너의 환경변수로 전달합니다.
 
 ## 배포 환경변수 점검
 

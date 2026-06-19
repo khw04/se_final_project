@@ -40,4 +40,4 @@ VITE_GOOGLE_CLIENT_ID=
 VITE_KAKAO_CLIENT_ID=
 ```
 
-Provider secrets, Gemini keys, SMTP passwords, and VAPID private keys must stay in the backend/deploy environment. For frontend-only mock sessions, use `.env.mock` with `VITE_POKEMO_MOCK_SESSION=true`; normal build/dev runs do not load that file automatically.
+Provider secrets, Gemini keys, SMTP passwords, and VAPID private keys must stay in the backend/deploy environment.
