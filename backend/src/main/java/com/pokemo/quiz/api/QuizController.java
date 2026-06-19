@@ -1,5 +1,6 @@
 package com.pokemo.quiz.api;
 
+import com.pokemo.ai.service.AiService;
 import com.pokemo.common.CurrentUserProvider;
 import com.pokemo.quiz.service.QuizService;
 import jakarta.validation.Valid;
@@ -20,10 +21,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class QuizController {
 
     private final QuizService quizService;
+    private final AiService aiService;
     private final CurrentUserProvider currentUserProvider;
 
-    public QuizController(QuizService quizService, CurrentUserProvider currentUserProvider) {
+    public QuizController(QuizService quizService, AiService aiService, CurrentUserProvider currentUserProvider) {
         this.quizService = quizService;
+        this.aiService = aiService;
         this.currentUserProvider = currentUserProvider;
     }
 
@@ -72,6 +75,6 @@ public class QuizController {
     @ResponseStatus(HttpStatus.CREATED)
     public QuizResponse retryWeakTypes(Principal principal) {
         long userId = currentUserProvider.userId(principal);
-        return quizService.retryWeakTypes(userId);
+        return aiService.retryWeakConcepts(userId);
     }
 }

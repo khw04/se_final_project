@@ -148,6 +148,70 @@ public class AiService {
     }
   }
 
+  // 반복해서 틀린 문제(2회 이상)의 개념·유형을 모아 AI가 같은 유형의 새 문제를 생성한다.
+  public QuizResponse retryWeakConcepts(long userId) {
+    List<WrongAnswerNote> weak = wrongAnswerNoteRepository.findByUserIdOrderByMissCountDesc(userId).stream()
+        .filter(note -> note.missCount() >= 2)
+        .toList();
+    if (weak.isEmpty()) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "재시험할 취약 문제가 없습니다. 2회 이상 틀린 문제가 필요합니다.");
+    }
+
+    Map<Long, Question> questionMap = questionRepository.findAllById(
+            weak.stream().map(WrongAnswerNote::questionId).toList()
+        ).stream()
+        .collect(Collectors.toMap(Question::id, q -> q));
+
+    List<WrongAnswerNote> resolvable = weak.stream()
+        .filter(note -> questionMap.containsKey(note.questionId()))
+        .toList();
+    if (resolvable.isEmpty()) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "재시험할 취약 문제가 없습니다.");
+    }
+
+    Long subjectId = questionMap.get(resolvable.get(0).questionId()).subjectId();
+    int count = Math.min(Math.max(resolvable.size(), 3), 5);
+
+    String weakList = resolvable.stream().limit(10)
+        .map(note -> {
+          Question q = questionMap.get(note.questionId());
+          String concept = note.concept() == null || note.concept().isBlank() ? "일반 개념" : note.concept();
+          return "- [%s] 개념: %s / 틀린 문제: %s".formatted(q.type().name(), concept, q.text());
+        })
+        .collect(Collectors.joining("\n"));
+
+    String prompt = """
+        다음은 학습자가 반복해서 틀린 문제들이다.
+        같은 개념과 문제 유형을 다루되, 숫자·상황·표현·보기를 바꾼 새로운 문제 %d개를 생성해라.
+        기존 문제의 문장을 그대로 반복하지 말고, 같은 개념을 다른 각도로 점검하는 문제로 만들어라.
+        반드시 JSON만 반환해라. 형식:
+        {"title":"취약 유형 재시험","questions":[{"type":"MCQ|SHORT|OX","text":"문제","choices":["A","B","C","D"],"correctIndex":0,"correctText":"정답","correctBool":true,"explanation":"해설","difficulty":"EASY|MEDIUM|HARD","conceptTags":["개념"]}]}
+        MCQ는 choices 4개와 correctIndex를, SHORT는 correctText를, OX는 correctBool을 포함한다.
+        문제 text와 choices에는 정답을 직접 노출하지 마라.
+
+        [반복해서 틀린 문제 목록]
+        %s
+        """.formatted(count, weakList);
+
+    try {
+      JsonNode root = parseJson(aiClient.generateText(prompt));
+      List<QuestionRequest> questions = new ArrayList<>();
+      JsonNode questionNodes = root.get("questions");
+      if (questionNodes != null && questionNodes.isArray()) {
+        for (JsonNode node : questionNodes) {
+          questions.add(toQuestionRequest(node, subjectId));
+        }
+      }
+      if (questions.isEmpty()) {
+        throw new AiClientException("AI가 생성한 문제가 없습니다.");
+      }
+      QuizRequest request = new QuizRequest("취약 유형 재시험", subjectId == null ? 1L : subjectId, questions);
+      return quizService.createQuiz(userId, request);
+    } catch (AiClientException exception) {
+      throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, exception.getMessage());
+    }
+  }
+
   @Transactional(readOnly = true)
   public RecommendResponse recommend(long userId) {
     // 추천에 노출할 과목명을 현재 사용자 과목 기준으로 매핑한다.

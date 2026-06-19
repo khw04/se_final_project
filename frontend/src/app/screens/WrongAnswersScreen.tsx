@@ -9,12 +9,24 @@ import { useApi } from '../useApi'
 
 type Filter = 'all' | 'mcq' | 'short' | 'ox'
 type VisibleWrongAnswer = WrongAnswerNote & { question: NonNullable<WrongAnswerNote['question']> }
+type SolveQuestion = VisibleWrongAnswer['question']
+type Picked = string | number | boolean | null
+
+function isAnswerCorrect(question: SolveQuestion, picked: Picked): boolean {
+  if (picked == null || picked === '') return false
+  if (question.type === 'mcq') return picked === question.correctIndex
+  if (question.type === 'ox') return picked === question.correctBool
+  return typeof picked === 'string'
+    && question.correctText != null
+    && picked.trim().toLowerCase() === question.correctText.trim().toLowerCase()
+}
 
 export function WrongAnswersScreen({ onOpenQuiz }: { onOpenQuiz?: (quizId: number) => void }) {
   const [filter, setFilter] = useState<Filter>('all')
   const { data: items, loading } = useApi(() => quizApi.getWrongAnswers({ type: filter }), [filter])
   const { data: subjects } = useApi(() => subjectApi.getSubjects(), [])
   const [openExplanations, setOpenExplanations] = useState<Record<number, boolean>>({})
+  const [solvingId, setSolvingId] = useState<number | null>(null)
   const [retrying, setRetrying] = useState(false)
   const [message, setMessage] = useState('')
 
@@ -89,7 +101,7 @@ export function WrongAnswersScreen({ onOpenQuiz }: { onOpenQuiz?: (quizId: numbe
           <Icon name="refresh" size={18} />
           <span>
             <strong>취약 유형 재시험</strong>
-            <em>{retrying ? '재시험 생성 중...' : `반복 오답 ${summary.repeated}문제로 자동 출제`}</em>
+            <em>{retrying ? 'AI가 새 문제 생성 중...' : `반복 오답 ${summary.repeated}개 기반 AI 새 문제 출제`}</em>
           </span>
         </button>
       </div>
@@ -146,10 +158,9 @@ export function WrongAnswersScreen({ onOpenQuiz }: { onOpenQuiz?: (quizId: numbe
                     <button
                       type="button"
                       className="surface__title-action"
-                      onClick={() => w.quizId != null ? onOpenQuiz?.(w.quizId) : void retryWeakQuiz()}
-                      disabled={retrying}
+                      onClick={() => setSolvingId((prev) => (prev === w.questionId ? null : w.questionId))}
                     >
-                      다시 풀기
+                      {solvingId === w.questionId ? '풀이 닫기' : '다시 풀기'}
                     </button>
                     <button
                       type="button"
@@ -159,6 +170,7 @@ export function WrongAnswersScreen({ onOpenQuiz }: { onOpenQuiz?: (quizId: numbe
                       {openExplanations[w.questionId] ? '해설 닫기' : '해설 보기'}
                     </button>
                   </div>
+                  {solvingId === w.questionId ? <InlineSolve question={question} /> : null}
                   {openExplanations[w.questionId] ? (
                     <div className="wa-list__explanation">
                       <p className="label">해설</p>
@@ -171,6 +183,87 @@ export function WrongAnswersScreen({ onOpenQuiz }: { onOpenQuiz?: (quizId: numbe
           </ul>
         )}
       </section>
+    </div>
+  )
+}
+
+function InlineSolve({ question }: { question: SolveQuestion }) {
+  const [picked, setPicked] = useState<Picked>(null)
+  const [revealed, setRevealed] = useState(false)
+  const answered = picked != null && picked !== ''
+  const correct = isAnswerCorrect(question, picked)
+
+  return (
+    <div className="wa-solve" style={{ marginTop: 12, display: 'grid', gap: 12 }}>
+      {question.type === 'mcq' ? (
+        <ul className="choices">
+          {(question.choices ?? []).map((choice, i) => {
+            const state = revealed
+              ? i === question.correctIndex ? 'correct' : picked === i ? 'wrong' : 'idle'
+              : picked === i ? 'picked' : 'idle'
+            return (
+              <li key={`${i}-${choice}`}>
+                <button type="button" className={`choice choice--${state}`} disabled={revealed} onClick={() => setPicked(i)}>
+                  <span className="choice__index">{i + 1}</span>
+                  <span className="choice__body">{choice}</span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      ) : question.type === 'ox' ? (
+        <div className="ox-row">
+          {[true, false].map((value) => {
+            const state = revealed
+              ? value === question.correctBool ? 'correct' : picked === value ? 'wrong' : 'idle'
+              : picked === value ? 'picked' : 'idle'
+            return (
+              <button key={String(value)} type="button" className={`ox ox--${state}`} disabled={revealed} onClick={() => setPicked(value)}>
+                {value ? 'O' : 'X'}
+              </button>
+            )
+          })}
+        </div>
+      ) : (
+        <input
+          className="short-input"
+          value={(picked as string) ?? ''}
+          disabled={revealed}
+          onChange={(event) => setPicked(event.target.value)}
+          placeholder="정답 입력"
+        />
+      )}
+
+      {!revealed ? (
+        <button
+          type="button"
+          className="surface__title-action"
+          style={{ justifySelf: 'start' }}
+          disabled={!answered}
+          onClick={() => setRevealed(true)}
+        >
+          정답 확인
+        </button>
+      ) : (
+        <div style={{ display: 'grid', gap: 6 }}>
+          <p style={{ margin: 0, fontWeight: 600, color: correct ? 'var(--color-accent)' : 'var(--color-warning)' }}>
+            {correct ? '정답입니다!' : '오답입니다.'}
+            {question.type === 'short' && question.correctText ? ` 모범답안: ${question.correctText}` : ''}
+          </p>
+          <p className="muted-note" style={{ margin: 0 }}>{question.explanation}</p>
+          <button
+            type="button"
+            className="surface__title-action"
+            style={{ justifySelf: 'start' }}
+            onClick={() => {
+              setPicked(null)
+              setRevealed(false)
+            }}
+          >
+            다시 시도
+          </button>
+        </div>
+      )}
     </div>
   )
 }
