@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -143,12 +144,15 @@ public class AiService {
     }
   }
 
+  @Cacheable(value = "recommend", key = "#userId")
   @Transactional(readOnly = true)
   public RecommendResponse recommend(long userId) {
-    Map<Long, Integer> accuracyBySubject = accuracyBySubject(userId);
+    // getSubjectProgress는 사용자 전체 풀이 이력을 집계하는 무거운 호출이므로 한 번만 수행하고 재사용한다.
+    List<SubjectProgressResponse> subjectProgress = statsService.getSubjectProgress(userId);
+    Map<Long, Integer> accuracyBySubject = accuracyBySubject(subjectProgress);
     List<WeakConceptResponse> weakConcepts = weakConcepts(userId);
     List<UpcomingSubjectResponse> upcomingSubjects = upcomingSubjects(userId, accuracyBySubject);
-    List<WeakSubjectCandidate> weakSubjects = weakSubjects(userId);
+    List<WeakSubjectCandidate> weakSubjects = weakSubjects(subjectProgress);
     List<PriorityRecommendationResponse> priorities =
         priorities(userId, weakConcepts, upcomingSubjects, weakSubjects, accuracyBySubject);
     return new RecommendResponse(priorities, weakConcepts, upcomingSubjects, true);
@@ -156,16 +160,16 @@ public class AiService {
 
   // 과목별 실제 정답률(StatsService 집계)을 subjectId -> accuracy 맵으로 만든다.
   // 풀이 기록이 없는 과목은 맵에 없으며, 호출부에서 null(정답률 미산정)로 처리한다.
-  private Map<Long, Integer> accuracyBySubject(long userId) {
-    return statsService.getSubjectProgress(userId).stream()
+  private Map<Long, Integer> accuracyBySubject(List<SubjectProgressResponse> subjectProgress) {
+    return subjectProgress.stream()
         .collect(Collectors.toMap(
             SubjectProgressResponse::subjectId,
             SubjectProgressResponse::accuracy,
             (left, right) -> left));
   }
 
-  private List<WeakSubjectCandidate> weakSubjects(long userId) {
-    return statsService.getSubjectProgress(userId).stream()
+  private List<WeakSubjectCandidate> weakSubjects(List<SubjectProgressResponse> subjectProgress) {
+    return subjectProgress.stream()
         .filter(item -> item.attempted() > 0)
         .filter(item -> item.accuracy() < 70)
         .sorted(Comparator

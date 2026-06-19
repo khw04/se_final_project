@@ -5,11 +5,12 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "study_sessions")
+@Table(name = "study_sessions", indexes = @Index(name = "idx_study_sessions_user_id", columnList = "userId"))
 public class StudySession {
 
   @Id

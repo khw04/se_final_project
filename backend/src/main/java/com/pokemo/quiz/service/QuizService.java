@@ -29,6 +29,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,11 +55,21 @@ public class QuizService {
         this.objectMapper = objectMapper;
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = "subjectProgress", key = "#userId"),
+            @CacheEvict(value = "typeAccuracy", key = "#userId"),
+            @CacheEvict(value = "recommend", key = "#userId")
+    })
     public QuizResponse createQuiz(long userId, QuizRequest request) {
         Quiz quiz = createQuizEntity(userId, request, GeneratedBy.MANUAL, null);
         return toQuizResponse(quizRepository.save(quiz), false);
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = "subjectProgress", key = "#userId"),
+            @CacheEvict(value = "typeAccuracy", key = "#userId"),
+            @CacheEvict(value = "recommend", key = "#userId")
+    })
     public QuizResponse createAiQuiz(long userId, long noteId, QuizRequest request) {
         Quiz quiz = createQuizEntity(userId, request, GeneratedBy.AI_GEMINI, noteId);
         return toQuizResponse(quizRepository.save(quiz), false);
@@ -117,6 +129,13 @@ public class QuizService {
                 question.explanation());
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = "subjectProgress", key = "#userId"),
+            @CacheEvict(value = "accuracyTrend", key = "#userId"),
+            @CacheEvict(value = "weeklyStudy", key = "#userId"),
+            @CacheEvict(value = "typeAccuracy", key = "#userId"),
+            @CacheEvict(value = "recommend", key = "#userId")
+    })
     public AttemptResponse submitAttempt(long userId, long quizId, AttemptRequest request) {
         Quiz quiz = findOwnedQuiz(userId, quizId);
 
@@ -181,6 +200,11 @@ public class QuizService {
                 .toList();
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = "subjectProgress", key = "#userId"),
+            @CacheEvict(value = "typeAccuracy", key = "#userId"),
+            @CacheEvict(value = "recommend", key = "#userId")
+    })
     public QuizResponse retryWeakTypes(long userId) {
         List<WrongAnswerNote> repeated = wrongAnswerNoteRepository
                 .findByUserIdOrderByMissCountDesc(userId)

@@ -1,5 +1,6 @@
 import type { AuthSession } from '../../../lib/authApi'
 
+import { aiApi } from '../../api/aiApi'
 import { dashboardApi } from '../../api/dashboardApi'
 import { subjectApi } from '../../api/subjectApi'
 import { Icon } from '../../components/Icon'
@@ -24,7 +25,8 @@ type Props = {
 
 export function DashboardScreen({ session, onJumpTo, studyTimer }: Props) {
   const greeting = session.email.split('@')[0]
-  const { data, loading, refetch } = useApi(() => dashboardApi.getDashboard(), [])
+  const { data, loading } = useApi(() => dashboardApi.getDashboard(), [])
+  const { data: recommend, refetch: refetchRecommend } = useApi(() => aiApi.getRecommend(), [])
   const { data: subjects } = useApi(() => subjectApi.getSubjects(), [])
   const visibleSubjects = subjects ?? subjectApi.getCachedSubjects()
 
@@ -90,7 +92,7 @@ export function DashboardScreen({ session, onJumpTo, studyTimer }: Props) {
         <WeeklyStudyCard points={withLiveTodayStudy(data.weeklyStudy, studyTimer)} progressRows={data.subjectProgress} subjects={visibleSubjects} />
         <StudyTimerCard subjects={visibleSubjects} timer={studyTimer} />
         <QuizTrendCard points={data.accuracyTrend} />
-        <AiRecommendCard items={data.recommendation} subjects={visibleSubjects} onRefresh={refetch} />
+        <AiRecommendCard items={recommend?.priorities ?? []} subjects={visibleSubjects} onRefresh={refetchRecommend} />
         <PushNotificationCard />
       </div>
     </div>

@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,6 +47,7 @@ public class StatsService {
         this.studySessionRepository = studySessionRepository;
     }
 
+    @Cacheable(value = "accuracyTrend", key = "#userId")
     public List<AccuracyTrendResponse> getAccuracyTrend(long userId) {
         return attemptRepository.findByUserIdOrderByStartedAtDesc(userId).stream()
                 .filter(a -> a.completedAt() != null)
@@ -53,6 +55,7 @@ public class StatsService {
                 .toList();
     }
 
+    @Cacheable(value = "subjectProgress", key = "#userId")
     public List<SubjectProgressResponse> getSubjectProgress(long userId) {
         List<QuizAttempt> attempts = attemptRepository.findByUserIdOrderByStartedAtDesc(userId);
         if (attempts.isEmpty()) return List.of();
@@ -92,6 +95,7 @@ public class StatsService {
                 .toList();
     }
 
+    @Cacheable(value = "typeAccuracy", key = "#userId")
     public List<TypeAccuracyResponse> getTypeAccuracy(long userId) {
         List<QuizAttempt> attempts = attemptRepository.findByUserIdOrderByStartedAtDesc(userId).stream()
                 .filter(a -> a.completedAt() != null)
@@ -137,6 +141,7 @@ public class StatsService {
                 .toList();
     }
 
+    @Cacheable(value = "weeklyStudy", key = "#userId")
     public List<WeeklyStudyResponse> getWeeklyStudy(long userId) {
         Map<Integer, Long> secondsByWeekday = new HashMap<>(attemptRepository
                 .findByUserIdOrderByStartedAtDesc(userId).stream()

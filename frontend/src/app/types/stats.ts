@@ -57,5 +57,4 @@ export type DashboardPayload = {
   weeklyStudy: WeeklyStudyPoint[]
   subjectProgress: SubjectProgress[]
   accuracyTrend: AccuracyTrendPoint[]
-  recommendation: PriorityRecommendation[]
 }
