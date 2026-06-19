@@ -20,10 +20,11 @@ import { useApi } from '../../useApi'
 type Props = {
   session: AuthSession
   onJumpTo: (view: ViewId) => void
+  onOpenSubjectNotes?: (subjectId: number) => void
   studyTimer: StudyTimerState
 }
 
-export function DashboardScreen({ session, onJumpTo, studyTimer }: Props) {
+export function DashboardScreen({ session, onJumpTo, onOpenSubjectNotes, studyTimer }: Props) {
   const greeting = session.email.split('@')[0]
   const { data, loading } = useApi(() => dashboardApi.getDashboard(), [])
   const { data: recommend, refetch: refetchRecommend } = useApi(() => aiApi.getRecommend(), [])
@@ -92,7 +93,7 @@ export function DashboardScreen({ session, onJumpTo, studyTimer }: Props) {
         <WeeklyStudyCard points={withLiveTodayStudy(data.weeklyStudy, studyTimer)} progressRows={data.subjectProgress} subjects={visibleSubjects} />
         <StudyTimerCard subjects={visibleSubjects} timer={studyTimer} />
         <QuizTrendCard points={data.accuracyTrend} />
-        <AiRecommendCard items={recommend?.priorities ?? []} subjects={visibleSubjects} onRefresh={refetchRecommend} />
+        <AiRecommendCard items={recommend?.priorities ?? []} subjects={visibleSubjects} onRefresh={refetchRecommend} onOpenSubjectNotes={onOpenSubjectNotes} />
         <PushNotificationCard />
       </div>
     </div>
@@ -245,7 +246,7 @@ function SubjectProgressList({ rows, subjects }: { rows: SubjectProgress[]; subj
   )
 }
 
-function AiRecommendCard({ items, subjects, onRefresh }: { items: PriorityRecommendation[]; subjects: Subject[]; onRefresh: () => void }) {
+function AiRecommendCard({ items, subjects, onRefresh, onOpenSubjectNotes }: { items: PriorityRecommendation[]; subjects: Subject[]; onRefresh: () => void; onOpenSubjectNotes?: (subjectId: number) => void }) {
   return (
     <section className="surface dashboard-card">
       <div className="surface__title">
@@ -268,7 +269,15 @@ function AiRecommendCard({ items, subjects, onRefresh }: { items: PriorityRecomm
                 <p className="recommend-list__label">{subjectName}</p>
                 <p className="recommend-list__detail">{item.reason}</p>
               </div>
-              <button type="button" className="recommend-list__cta" aria-label={`${subjectName} 학습 시작`}>
+              <button
+                type="button"
+                className="recommend-list__cta"
+                aria-label={item.subjectId != null && onOpenSubjectNotes ? `${subjectName} 노트 열기` : `${subjectName} 학습 시작`}
+                disabled={item.subjectId == null || !onOpenSubjectNotes}
+                onClick={() => {
+                  if (item.subjectId != null) onOpenSubjectNotes?.(item.subjectId)
+                }}
+              >
                 <Icon name="arrowRight" size={16} />
               </button>
             </li>

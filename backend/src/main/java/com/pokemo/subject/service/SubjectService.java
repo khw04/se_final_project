@@ -6,8 +6,6 @@ import com.pokemo.subject.api.SubjectResponse;
 import com.pokemo.subject.domain.Subject;
 import com.pokemo.subject.repository.SubjectRepository;
 import java.util.List;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,7 +29,6 @@ public class SubjectService {
   }
 
   @Transactional(readOnly = true)
-  @Cacheable(value = "subjects", key = "#userId")
   public List<SubjectResponse> getAll(long userId) {
     return subjectRepository.findByUserIdOrderByIdAsc(userId).stream()
         .map(SubjectResponse::from)
@@ -39,7 +36,6 @@ public class SubjectService {
   }
 
   @Transactional
-  @CacheEvict(value = "subjects", key = "#userId")
   public SubjectResponse create(long userId, CreateSubjectRequest request) {
     if (subjectRepository.existsByUserIdAndName(userId, request.name())) {
       throw new ApiException(HttpStatus.CONFLICT, "이미 존재하는 과목명입니다.");
@@ -49,7 +45,6 @@ public class SubjectService {
   }
 
   @Transactional
-  @CacheEvict(value = "subjects", key = "#userId")
   public SubjectResponse update(long userId, Long id, CreateSubjectRequest request) {
     Subject subject = findOwned(userId, id);
     subjectRepository.findByUserIdAndName(userId, request.name())
@@ -62,7 +57,6 @@ public class SubjectService {
   }
 
   @Transactional
-  @CacheEvict(value = "subjects", key = "#userId")
   public void delete(long userId, Long id) {
     Subject subject = findOwned(userId, id);
     subjectRepository.delete(subject);
@@ -70,7 +64,6 @@ public class SubjectService {
 
   /** 가입 직후 사용자에게 기본 과목을 1회 생성한다. 이미 과목이 있으면 건너뛴다. */
   @Transactional
-  @CacheEvict(value = "subjects", key = "#userId")
   public void seedDefaults(long userId) {
     if (subjectRepository.existsByUserId(userId)) {
       return;
