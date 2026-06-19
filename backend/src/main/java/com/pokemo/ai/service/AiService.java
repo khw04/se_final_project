@@ -39,7 +39,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -144,7 +143,6 @@ public class AiService {
     }
   }
 
-  @Cacheable(value = "recommend", key = "#userId")
   @Transactional(readOnly = true)
   public RecommendResponse recommend(long userId) {
     // getSubjectProgress는 사용자 전체 풀이 이력을 집계하는 무거운 호출이므로 한 번만 수행하고 재사용한다.

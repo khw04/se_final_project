@@ -9,7 +9,6 @@ import com.pokemo.common.ApiException;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,7 +33,6 @@ public class CalendarEventService {
   }
 
   @Transactional
-  @CacheEvict(value = "recommend", key = "#userId")
   public CalendarEventResponse create(Long userId, CalendarEventRequest request) {
     CalendarEvent event = new CalendarEvent(
         userId,
@@ -56,7 +54,6 @@ public class CalendarEventService {
   }
 
   @Transactional
-  @CacheEvict(value = "recommend", key = "#userId")
   public CalendarEventResponse update(Long userId, Long id, CalendarEventRequest request) {
     CalendarEvent event = findOwned(userId, id);
     event.update(
@@ -78,7 +75,6 @@ public class CalendarEventService {
   }
 
   @Transactional
-  @CacheEvict(value = "recommend", key = "#userId")
   public void delete(Long userId, Long id) {
     CalendarEvent event = findOwned(userId, id);
     calendarEventRepository.delete(event);
