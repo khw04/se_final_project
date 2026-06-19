@@ -56,7 +56,7 @@ services:
     volumes:
       - backend-uploads:/app/uploads
       # To enforce DB_SSL_MODE=VERIFY_IDENTITY against AWS RDS, mount the RDS CA truststore
-      # and set DB_SSL_PARAMS to point at /app/certs/rds-truststore.jks (see doc/배포_실행_순서.md).
+      # and set DB_SSL_PARAMS to point at /app/certs/rds-truststore.jks (see doc/README.md).
       - ./certs:/app/certs:ro
 
   frontend:
