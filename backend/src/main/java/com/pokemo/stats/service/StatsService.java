@@ -49,7 +49,7 @@ public class StatsService {
     public List<AccuracyTrendResponse> getAccuracyTrend(long userId) {
         return attemptRepository.findByUserIdOrderByStartedAtDesc(userId).stream()
                 .filter(a -> a.completedAt() != null)
-                .map(a -> new AccuracyTrendResponse(a.startedAt().toString(), a.accuracy()))
+                .map(a -> new AccuracyTrendResponse(a.startedAt().toString(), (int) Math.round(a.accuracy())))
                 .toList();
     }
 
