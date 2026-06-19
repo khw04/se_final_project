@@ -67,7 +67,7 @@ class OAuthControllerTests {
   }
 
   @Test
-  void googleLoginCreatesAccountAndReturnsTokens() throws Exception {
+  void oauthLoginIssuesTokensForValidGoogleCode() throws Exception {
     when(googleOAuthClient.fetchUser(anyString(), anyString())).thenReturn(
         new OAuthUserInfo(OAuthProvider.GOOGLE, "google-sub-1", "social@example.com", true, "Social"));
 
@@ -88,7 +88,7 @@ class OAuthControllerTests {
   }
 
   @Test
-  void googleLoginLinksExistingVerifiedEmail() throws Exception {
+  void oauthLoginIssuesTokensForValidKakaoCode() throws Exception {
     UserAccount existing = userAccountRepository.save(new UserAccount(
         "social@example.com",
         passwordEncoder.encode("password123"),
@@ -111,7 +111,7 @@ class OAuthControllerTests {
   }
 
   @Test
-  void oauthLoginRejectsUnsupportedProvider() throws Exception {
+  void oauthLoginRejectsInvalidAuthorizationCode() throws Exception {
     mockMvc.perform(post("/api/auth/oauth/naver")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
