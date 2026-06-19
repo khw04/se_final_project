@@ -12,9 +12,10 @@ import { useApi } from '../useApi'
 type RecommendScreenProps = {
   onOpenNote?: (noteId: number) => void
   onOpenQuiz?: (quizId: number) => void
+  onOpenSubjectNotes?: (subjectId: number) => void
 }
 
-export function RecommendScreen({ onOpenNote, onOpenQuiz }: RecommendScreenProps) {
+export function RecommendScreen({ onOpenNote, onOpenQuiz, onOpenSubjectNotes }: RecommendScreenProps) {
   const { data, loading, refetch } = useApi(() => aiApi.getRecommend(), [])
   const { data: subjects } = useApi(() => subjectApi.getSubjects(), [])
   const [weakGenerating, setWeakGenerating] = useState(false)
@@ -61,7 +62,7 @@ export function RecommendScreen({ onOpenNote, onOpenQuiz }: RecommendScreenProps
 
       <NoteSummaryCard onOpenNote={onOpenNote} onOpenQuiz={onOpenQuiz} />
 
-      <PriorityRail items={data.priorities} subjects={subjects ?? []} />
+      <PriorityRail items={data.priorities} subjects={subjects ?? []} onOpenSubjectNotes={onOpenSubjectNotes} />
 
       <div className="recommend-cols">
         <WeakConceptCard
@@ -78,12 +79,15 @@ export function RecommendScreen({ onOpenNote, onOpenQuiz }: RecommendScreenProps
   )
 }
 
-function subjectLabel(subjects: Subject[], subjectId: number | null | undefined) {
-  if (subjectId == null) return '과목 미분류'
-  return subjects.find((subject) => subject.id === subjectId)?.name ?? `과목 ${subjectId}`
+function subjectLabel(subjects: Subject[], subjectId: number | null | undefined, subjectName?: string | null) {
+  // 서버가 내려준 과목명을 우선 사용하고, 없으면 현재 과목 목록에서 찾는다.
+  // 삭제된 과목 등으로 매칭이 안 되면 ID 노출 대신 '과목 미분류'로 표시한다.
+  if (subjectName) return subjectName
+  const matched = subjectId == null ? undefined : subjects.find((subject) => subject.id === subjectId)
+  return matched?.name ?? '과목 미분류'
 }
 
-function PriorityRail({ items, subjects }: { items: PriorityRecommendation[]; subjects: Subject[] }) {
+function PriorityRail({ items, subjects, onOpenSubjectNotes }: { items: PriorityRecommendation[]; subjects: Subject[]; onOpenSubjectNotes?: (subjectId: number) => void }) {
   return (
     <section className="surface">
       <div className="surface__title">
@@ -92,11 +96,12 @@ function PriorityRail({ items, subjects }: { items: PriorityRecommendation[]; su
       </div>
       <ol className="priority-rail">
         {items.map((item) => {
+          const canOpenNotes = item.subjectId != null && Boolean(onOpenSubjectNotes)
           return (
             <li key={item.rank} className={`priority-row priority-row--${item.tone}`}>
               <span className="priority-row__rank">{item.rank}</span>
               <div>
-                <p className="priority-row__subject">{subjectLabel(subjects, item.subjectId)}</p>
+                <p className="priority-row__subject">{subjectLabel(subjects, item.subjectId, item.subjectName)}</p>
                 <p className="priority-row__reason">{item.reason}</p>
               </div>
               <div className="priority-row__metrics">
@@ -105,7 +110,15 @@ function PriorityRail({ items, subjects }: { items: PriorityRecommendation[]; su
                 ) : null}
                 <span className="priority-row__rate">{item.accuracy == null ? '–' : `${item.accuracy}%`}</span>
               </div>
-              <button type="button" className="priority-row__cta" aria-label="학습 시작">
+              <button
+                type="button"
+                className="priority-row__cta"
+                aria-label={canOpenNotes ? '과목 노트 열기' : '학습 시작'}
+                disabled={!canOpenNotes}
+                onClick={() => {
+                  if (item.subjectId != null) onOpenSubjectNotes?.(item.subjectId)
+                }}
+              >
                 <Icon name="arrowRight" size={16} />
               </button>
             </li>
@@ -152,7 +165,7 @@ function WeakConceptCard({
               <div>
                 <p className="weak-list__concept">{concept.concept}</p>
                 <p className="weak-list__meta">
-                  {subjectLabel(subjects, concept.subjectId)} · 관련: {concept.relatedKeywords.join(', ')}
+                  {subjectLabel(subjects, concept.subjectId, concept.subjectName)} · 관련: {concept.relatedKeywords.join(', ')}
                 </p>
               </div>
               <span className="weak-list__ratio">
@@ -194,7 +207,7 @@ function UpcomingSubjectCard({ subjects, subjectOptions }: { subjects: UpcomingS
           return (
             <li key={subject.subjectId}>
               <div>
-                <p className="upcoming-subjects__name">{subjectLabel(subjectOptions, subject.subjectId)}</p>
+                <p className="upcoming-subjects__name">{subjectLabel(subjectOptions, subject.subjectId, subject.subjectName)}</p>
                 <p className="upcoming-subjects__meta">
                   D-{subject.dDay} · 정답률 {subject.accuracy == null ? '–' : `${subject.accuracy}%`}
                 </p>

@@ -155,9 +155,10 @@ function StudyTimerCard({ subjects, timer }: { subjects: Subject[]; timer: Study
   )
 }
 
-function subjectLabel(subjects: Subject[], subjectId: number | null | undefined) {
+function subjectLabel(subjects: Subject[], subjectId: number | null | undefined, subjectName?: string | null) {
+  if (subjectName) return subjectName
   if (subjectId == null) return '과목 없음'
-  return subjects.find((subject) => subject.id === subjectId)?.name ?? `과목 ${subjectId}`
+  return subjects.find((subject) => subject.id === subjectId)?.name ?? '과목 미분류'
 }
 
 function DDayStrip({ events, subjects, onJumpTo }: { events: CalendarEvent[]; subjects: Subject[]; onJumpTo: (v: ViewId) => void }) {
@@ -258,7 +259,7 @@ function AiRecommendCard({ items, subjects, onRefresh }: { items: PriorityRecomm
       </div>
       <ul className="recommend-list">
         {items.map((item) => {
-          const subjectName = subjectLabel(subjects, item.subjectId)
+          const subjectName = subjectLabel(subjects, item.subjectId, item.subjectName)
           const kind = item.tone === 'urgent' ? '시험 임박' : item.tone === 'warning' ? '취약 과목' : '학습 추천'
           return (
             <li key={item.rank}>

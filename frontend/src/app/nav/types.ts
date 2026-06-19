@@ -27,6 +27,7 @@ export type NavRenderContext = {
 export type NavOptions = {
   noteId?: number
   quizId?: number
+  subjectId?: number
 }
 
 export type NavEntry = {

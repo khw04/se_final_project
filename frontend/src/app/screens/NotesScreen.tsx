@@ -15,17 +15,18 @@ const DEFAULT_SUBJECT_COLOR = '#243f6b'
 
 type NotesScreenProps = {
   initialNoteId?: number
+  initialSubjectId?: number
   onOpenQuiz?: (quizId: number) => void
 }
 
-export function NotesScreen({ initialNoteId, onOpenQuiz }: NotesScreenProps) {
+export function NotesScreen({ initialNoteId, initialSubjectId, onOpenQuiz }: NotesScreenProps) {
   const { data: subjectsData, refetch: refetchSubjects } = useApi(() => subjectApi.getSubjects(), [])
   const subjects = subjectsData ?? subjectApi.getCachedSubjects()
   const { data: notes, refetch: refetchNotes } = useApi(() => noteApi.getNotes(), [])
   const { data: tags, error: tagsError, refetch: refetchTags } = useApi(() => subjectApi.getTags(), [])
 
   const [activeId, setActiveId] = useState<number | null>(initialNoteId ?? null)
-  const [activeSubjectId, setActiveSubjectId] = useState<number>(0)
+  const [activeSubjectId, setActiveSubjectId] = useState<number>(initialSubjectId ?? 0)
   const [activeTagIds, setActiveTagIds] = useState<number[]>([])
   const [query, setQuery] = useState<string>('')
   const [editingSubjectId, setEditingSubjectId] = useState<number | null>(null)

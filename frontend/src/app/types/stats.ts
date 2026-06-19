@@ -4,6 +4,7 @@ import type { UserAccount } from './common'
 export type WeakConcept = {
   concept: string
   subjectId: number | null
+  subjectName?: string | null
   missCount: number
   totalAttempts: number
   relatedKeywords: string[]
@@ -11,6 +12,7 @@ export type WeakConcept = {
 
 export type UpcomingSubject = {
   subjectId: number
+  subjectName?: string | null
   dDay: number
   accuracy: number | null
   priorityScore: number
@@ -19,6 +21,7 @@ export type UpcomingSubject = {
 export type PriorityRecommendation = {
   rank: number
   subjectId: number
+  subjectName?: string | null
   reason: string
   dDay?: number
   accuracy: number | null

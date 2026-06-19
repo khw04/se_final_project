@@ -11,6 +11,7 @@ export const recommendNavEntry: NavEntry = {
     <RecommendScreen
       onOpenNote={(noteId) => navigate('notes', { noteId })}
       onOpenQuiz={(quizId) => navigate('quiz', { quizId })}
+      onOpenSubjectNotes={(subjectId) => navigate('notes', { subjectId })}
     />
   ),
 }

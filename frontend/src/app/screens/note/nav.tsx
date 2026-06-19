@@ -9,8 +9,9 @@ export const noteNavEntry: NavEntry = {
   icon: 'book',
   render: ({ options, navigate }) => (
     <NotesScreen
-      key={options?.noteId ?? 'all'}
+      key={`${options?.noteId ?? 'all'}-${options?.subjectId ?? 'all'}`}
       initialNoteId={options?.noteId}
+      initialSubjectId={options?.subjectId}
       onOpenQuiz={(quizId) => navigate('quiz', { quizId })}
     />
   ),
