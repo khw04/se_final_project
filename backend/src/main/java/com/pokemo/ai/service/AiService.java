@@ -428,30 +428,29 @@ public class AiService {
   ) {
     List<PriorityRecommendationResponse> result = new ArrayList<>();
     Set<Long> recommendedSubjectIds = new HashSet<>();
+    // 같은 과목이 여러 번 추천되지 않도록, 각 단계에서 이미 추천된 과목(recommendedSubjectIds)은 건너뛴다.
+    // Set.add는 새 과목일 때만 true를 반환하므로 필터와 등록을 동시에 처리한다. 과목 미지정(null)만 중복 허용.
     upcomingSubjects.stream()
         .sorted(Comparator.comparingInt(UpcomingSubjectResponse::dDay))
+        .filter(item -> item.subjectId() == null || recommendedSubjectIds.add(item.subjectId()))
         .limit(2)
         .forEach(item -> result.add(new PriorityRecommendationResponse(result.size() + 1,
             item.subjectId(), subjectName(subjectNames, item.subjectId()),
             "시험·과제 일정이 임박했습니다: " + item.label(), item.dDay(), item.accuracy(), item.dDay() <= 3 ? "urgent" : "warning")));
-    result.stream()
-        .map(PriorityRecommendationResponse::subjectId)
-        .filter(id -> id != null)
-        .forEach(recommendedSubjectIds::add);
     weakSubjects.stream()
-        .filter(item -> !recommendedSubjectIds.contains(item.subjectId()))
+        .filter(item -> recommendedSubjectIds.add(item.subjectId()))
         .limit(2)
-        .forEach(item -> {
-          recommendedSubjectIds.add(item.subjectId());
-          result.add(new PriorityRecommendationResponse(result.size() + 1,
-              item.subjectId(), subjectName(subjectNames, item.subjectId()),
-              "정답률이 낮은 과목을 우선 복습하세요.", null, item.accuracy(),
-              item.accuracy() < 50 ? "urgent" : "warning"));
-        });
-    weakConcepts.stream().limit(2).forEach(item -> result.add(new PriorityRecommendationResponse(result.size() + 1,
-        item.subjectId(), subjectName(subjectNames, item.subjectId()),
-        "오답이 누적된 개념을 복습하세요: " + item.concept(), null,
-        item.subjectId() == null ? null : accuracyBySubject.get(item.subjectId()), "warning")));
+        .forEach(item -> result.add(new PriorityRecommendationResponse(result.size() + 1,
+            item.subjectId(), subjectName(subjectNames, item.subjectId()),
+            "정답률이 낮은 과목을 우선 복습하세요.", null, item.accuracy(),
+            item.accuracy() < 50 ? "urgent" : "warning")));
+    weakConcepts.stream()
+        .filter(item -> item.subjectId() == null || recommendedSubjectIds.add(item.subjectId()))
+        .limit(2)
+        .forEach(item -> result.add(new PriorityRecommendationResponse(result.size() + 1,
+            item.subjectId(), subjectName(subjectNames, item.subjectId()),
+            "오답이 누적된 개념을 복습하세요: " + item.concept(), null,
+            item.subjectId() == null ? null : accuracyBySubject.get(item.subjectId()), "warning")));
     if (result.isEmpty()) {
       int solved = quizAttemptRepository.findByUserIdOrderByStartedAtDesc(userId).size();
       result.add(new PriorityRecommendationResponse(1, null, null,

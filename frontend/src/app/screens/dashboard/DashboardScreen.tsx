@@ -191,7 +191,8 @@ function DDayStrip({ events, subjects, onJumpTo }: { events: CalendarEvent[]; su
 
 function WeeklyStudyCard({ points, progressRows, subjects }: { points: WeeklyStudyPoint[]; progressRows: SubjectProgress[]; subjects: Subject[] }) {
   const seconds = points.map((p) => p.studySeconds ?? p.studyMinutes * 60)
-  const maxSeconds = Math.max(360 * 60, ...seconds)
+  // 통계 화면과 동일하게 실제 데이터 최대값을 기준으로 막대 높이를 잡아 변화가 잘 보이게 한다.
+  const maxSeconds = Math.max(...seconds, 1)
   const totalH = (seconds.reduce((sum, value) => sum + value, 0) / 3600).toFixed(1)
 
   return (

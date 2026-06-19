@@ -181,6 +181,12 @@ public class QuizService {
                 .toList();
     }
 
+    // 오답노트에서 다시 풀어 맞힌 문제를 목록에서 제거한다.
+    public void resolveWrongAnswer(long userId, long questionId) {
+        wrongAnswerNoteRepository.findByUserIdAndQuestionId(userId, questionId)
+                .ifPresent(wrongAnswerNoteRepository::delete);
+    }
+
     public QuizResponse retryWeakTypes(long userId) {
         List<WrongAnswerNote> repeated = wrongAnswerNoteRepository
                 .findByUserIdOrderByMissCountDesc(userId)

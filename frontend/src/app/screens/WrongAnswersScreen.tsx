@@ -23,12 +23,23 @@ function isAnswerCorrect(question: SolveQuestion, picked: Picked): boolean {
 
 export function WrongAnswersScreen({ onOpenQuiz }: { onOpenQuiz?: (quizId: number) => void }) {
   const [filter, setFilter] = useState<Filter>('all')
-  const { data: items, loading } = useApi(() => quizApi.getWrongAnswers({ type: filter }), [filter])
+  const { data: items, loading, refetch } = useApi(() => quizApi.getWrongAnswers({ type: filter }), [filter])
   const { data: subjects } = useApi(() => subjectApi.getSubjects(), [])
   const [openExplanations, setOpenExplanations] = useState<Record<number, boolean>>({})
   const [solvingId, setSolvingId] = useState<number | null>(null)
   const [retrying, setRetrying] = useState(false)
   const [message, setMessage] = useState('')
+
+  async function handleResolved(questionId: number) {
+    try {
+      await quizApi.resolveWrongAnswer(questionId)
+      setSolvingId(null)
+      setMessage('정답입니다! 이 문제를 오답노트에서 제거했습니다.')
+      refetch()
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '오답노트에서 제거하지 못했습니다.')
+    }
+  }
 
   async function retryWeakQuiz() {
     setRetrying(true)
@@ -170,7 +181,7 @@ export function WrongAnswersScreen({ onOpenQuiz }: { onOpenQuiz?: (quizId: numbe
                       {openExplanations[w.questionId] ? '해설 닫기' : '해설 보기'}
                     </button>
                   </div>
-                  {solvingId === w.questionId ? <InlineSolve question={question} /> : null}
+                  {solvingId === w.questionId ? <InlineSolve question={question} onResolved={() => void handleResolved(w.questionId)} /> : null}
                   {openExplanations[w.questionId] ? (
                     <div className="wa-list__explanation">
                       <p className="label">해설</p>
@@ -187,7 +198,7 @@ export function WrongAnswersScreen({ onOpenQuiz }: { onOpenQuiz?: (quizId: numbe
   )
 }
 
-function InlineSolve({ question }: { question: SolveQuestion }) {
+function InlineSolve({ question, onResolved }: { question: SolveQuestion; onResolved?: () => void }) {
   const [picked, setPicked] = useState<Picked>(null)
   const [revealed, setRevealed] = useState(false)
   const answered = picked != null && picked !== ''
@@ -240,7 +251,10 @@ function InlineSolve({ question }: { question: SolveQuestion }) {
           className="surface__title-action"
           style={{ justifySelf: 'start' }}
           disabled={!answered}
-          onClick={() => setRevealed(true)}
+          onClick={() => {
+            setRevealed(true)
+            if (isAnswerCorrect(question, picked)) onResolved?.()
+          }}
         >
           정답 확인
         </button>

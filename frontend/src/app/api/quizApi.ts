@@ -79,6 +79,10 @@ export const quizApi = {
   async retryWeakTypes(): Promise<Quiz> {
     return apiFetch<Quiz>('/wrong-answers/retry', { method: 'POST' })
   },
+
+  async resolveWrongAnswer(questionId: number): Promise<void> {
+    await apiFetch<void>(`/wrong-answers/${questionId}`, { method: 'DELETE' })
+  },
 }
 
 export const getQuiz = (id: number) => quizApi.getQuiz(id)
