@@ -5,7 +5,7 @@ import { noteApi } from '../api/noteApi'
 import { quizApi, type AnswerCheckResponse } from '../api/quizApi'
 import { subjectApi } from '../api/subjectApi'
 import { Icon } from '../components/Icon'
-import type { Answer, Question, QuestionType } from '../types'
+import type { Answer, Note, Question, QuestionType, Subject } from '../types'
 import { useApi } from '../useApi'
 
 type Picked = string | number | boolean | null
@@ -14,6 +14,7 @@ const QUESTION_TYPES: QuestionType[] = ['mcq', 'ox', 'short']
 export function QuizScreen({ quizId }: { quizId?: number }) {
   const { data: quizList, loading: listLoading, refetch: refetchQuizList } = useApi(() => quizApi.listQuizzes(), [])
   const { data: subjects } = useApi(() => subjectApi.getSubjects(), [])
+  const { data: notes } = useApi(() => noteApi.getNotes(), [])
   const [activeQuizId, setActiveQuizId] = useState<number | null>(quizId ?? null)
   const [generating, setGenerating] = useState(false)
   const [message, setMessage] = useState('')
@@ -58,16 +59,10 @@ export function QuizScreen({ quizId }: { quizId?: number }) {
     }
   }, [quiz?.id, quiz?.questions])
 
-  async function generateNewQuiz() {
+  async function generateQuizFromNote(noteId: number) {
     setGenerating(true)
     setMessage('')
     try {
-      const notes = await noteApi.getNotes()
-      const noteId = quiz?.generatedFromNoteId ?? notes[0]?.id
-      if (noteId == null) {
-        setMessage('퀴즈를 만들 노트가 없습니다. 먼저 노트를 작성해주세요.')
-        return
-      }
       const nextQuiz = await aiApi.generateQuiz(noteId)
       setActiveQuizId(nextQuiz.id)
       refetchQuizList()
@@ -99,14 +94,14 @@ export function QuizScreen({ quizId }: { quizId?: number }) {
         <header>
           <p className="eyebrow">퀴즈</p>
           <h1 className="screen__heading">퀴즈 없음</h1>
-          <p className="screen__lede">아직 생성된 퀴즈가 없습니다. AI 퀴즈 생성 기능으로 노트 기반 퀴즈를 만들어보세요.</p>
-          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <button type="button" className="surface__title-action" onClick={() => void generateNewQuiz()} disabled={generating}>
-              <Icon name="sparkle" size={14} style={{ marginRight: 6 }} />
-              {generating ? '퀴즈 생성 중...' : '새 퀴즈 생성'}
-            </button>
-          </div>
-          {message ? <p className="muted-note" style={{ marginTop: 12 }}>{message}</p> : null}
+          <p className="screen__lede">아직 생성된 퀴즈가 없습니다. 과목과 노트를 골라 AI 퀴즈를 만들어보세요.</p>
+          <GenerateQuizPanel
+            subjects={subjects ?? []}
+            notes={notes ?? []}
+            generating={generating}
+            message={message}
+            onGenerate={generateQuizFromNote}
+          />
         </header>
       </div>
     )
@@ -199,13 +194,13 @@ export function QuizScreen({ quizId }: { quizId?: number }) {
             : '직접 출제한 '}
           문제입니다. 풀이를 마치면 오답이 자동으로 오답노트로 이동합니다.
         </p>
-        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-          <button type="button" className="surface__title-action" onClick={() => void generateNewQuiz()} disabled={generating}>
-            <Icon name="sparkle" size={14} style={{ marginRight: 6 }} />
-            {generating ? '퀴즈 생성 중...' : '새 퀴즈 생성'}
-          </button>
-        </div>
-        {message ? <p className="muted-note" style={{ marginTop: 12 }}>{message}</p> : null}
+        <GenerateQuizPanel
+          subjects={subjects ?? []}
+          notes={notes ?? []}
+          generating={generating}
+          message={message}
+          onGenerate={generateQuizFromNote}
+        />
       </header>
 
       <div className="quiz-layout">
@@ -329,6 +324,79 @@ export function QuizScreen({ quizId }: { quizId?: number }) {
           </section>
         </aside>
       </div>
+    </div>
+  )
+}
+
+type GenerateQuizPanelProps = {
+  subjects: Subject[]
+  notes: Note[]
+  generating: boolean
+  message: string
+  onGenerate: (noteId: number) => void
+}
+
+function GenerateQuizPanel({ subjects, notes, generating, message, onGenerate }: GenerateQuizPanelProps) {
+  const [subjectId, setSubjectId] = useState<number>(0)
+  const [noteId, setNoteId] = useState<number | null>(null)
+  const filteredNotes = notes.filter((note) => subjectId === 0 || note.subjectId === subjectId)
+  const effectiveNoteId = noteId != null && filteredNotes.some((note) => note.id === noteId)
+    ? noteId
+    : filteredNotes[0]?.id ?? null
+
+  return (
+    <div className="quiz-generate" style={{ display: 'grid', gap: 12, marginTop: 12, maxWidth: 460 }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <label className="label" style={{ display: 'grid', gap: 6, flex: '1 1 160px' }}>
+          과목
+          <select
+            value={subjectId}
+            onChange={(event) => {
+              setSubjectId(Number(event.target.value))
+              setNoteId(null)
+            }}
+          >
+            <option value={0}>전체 과목</option>
+            {subjects.map((subject) => (
+              <option key={subject.id} value={subject.id}>{subject.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="label" style={{ display: 'grid', gap: 6, flex: '2 1 200px' }}>
+          노트
+          <select
+            value={effectiveNoteId ?? ''}
+            onChange={(event) => setNoteId(Number(event.target.value))}
+            disabled={filteredNotes.length === 0}
+          >
+            {filteredNotes.length === 0 ? (
+              <option value="">노트 없음</option>
+            ) : (
+              filteredNotes.map((note) => (
+                <option key={note.id} value={note.id}>{note.title}</option>
+              ))
+            )}
+          </select>
+        </label>
+      </div>
+      <button
+        type="button"
+        className="surface__title-action"
+        style={{ justifySelf: 'start' }}
+        onClick={() => {
+          if (effectiveNoteId != null) onGenerate(effectiveNoteId)
+        }}
+        disabled={generating || effectiveNoteId == null}
+      >
+        <Icon name="sparkle" size={14} style={{ marginRight: 6 }} />
+        {generating ? '퀴즈 생성 중...' : '이 노트로 퀴즈 생성'}
+      </button>
+      {filteredNotes.length === 0 ? (
+        <p className="muted-note" style={{ margin: 0 }}>
+          {notes.length === 0 ? '먼저 노트를 작성해주세요.' : '이 과목에 노트가 없습니다. 다른 과목을 선택하세요.'}
+        </p>
+      ) : null}
+      {message ? <p className="muted-note" style={{ margin: 0 }}>{message}</p> : null}
     </div>
   )
 }
